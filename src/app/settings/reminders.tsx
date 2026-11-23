@@ -56,10 +56,11 @@ function RemindersForm({ p }: { p: Profile }) {
     setMessage(null);
     try {
       await api.patch('/profile/notification-preferences', { enabled, days, time, timezone: deviceTimezone(), permissionGranted: granted });
-      if (enabled && granted) await scheduleWeeklyReminders(days, time, p?.goal?.motivationMessage ?? undefined);
+      let scheduled = true;
+      if (enabled && granted) scheduled = await scheduleWeeklyReminders(days, time, p?.goal?.motivationMessage ?? undefined);
       else await cancelReminders();
       qc.invalidateQueries({ queryKey: ['profile'] });
-      setMessage('Saved');
+      setMessage(scheduled ? 'Saved' : 'Saved — but this device could not schedule reminders.');
       haptic.success();
     } catch (e) {
       setMessage(errorMessage(e));
