@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+
+import type { Profile } from '@/lib/types';
 import { useQueryClient } from '@tanstack/react-query';
 import { Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,26 +14,35 @@ import { Button, Card, Chip, Header, haptic, Row, Skeleton, Text } from '@/compo
 const TIMES = ['06:00', '07:00', '08:00', '09:00', '12:00', '17:00', '18:00', '19:00', '20:00', '21:00'];
 
 export default function Reminders() {
-  const qc = useQueryClient();
   const { data: p, isLoading } = useProfile();
-  const [enabled, setEnabled] = useState(false);
-  const [days, setDays] = useState<number[]>([]);
-  const [time, setTime] = useState('07:00');
-  const [granted, setGranted] = useState<boolean | null>(null);
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
+        <Header title="Workout reminders" />
+        {isLoading || !p ? (
+          <View style={{ padding: 20 }}>
+            <Skeleton height={140} />
+          </View>
+        ) : (
+          <RemindersForm p={p} />
+        )}
+      </SafeAreaView>
+    </View>
+  );
+}
+
+function RemindersForm({ p }: { p: Profile }) {
+  const qc = useQueryClient();
+  const [enabled, setEnabled] = useState(p.reminders.enabled);
+  const [days, setDays] = useState<number[]>(p.reminders.days);
+  const [time, setTime] = useState(p.reminders.time ?? '07:00');
+  const [granted, setGranted] = useState<boolean | null>(p.reminders.permissionGranted);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (p) {
-      setEnabled(p.reminders.enabled);
-      setDays(p.reminders.days);
-      setTime(p.reminders.time ?? '07:00');
-      setGranted(p.reminders.permissionGranted);
-    }
-  }, [p]);
-
   const toggleEnabled = async (v: boolean) => {
     setEnabled(v);
+    if (v && !days.length) setDays([1, 3, 5]);
     if (v && Platform.OS !== 'web') {
       // Ask only at the moment the member opts in; never repeatedly.
       const ok = await requestReminderPermission();
@@ -59,14 +70,6 @@ export default function Reminders() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
-        <Header title="Workout reminders" />
-        {isLoading ? (
-          <View style={{ padding: 20 }}>
-            <Skeleton height={140} />
-          </View>
-        ) : (
           <>
             <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
               <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -133,9 +136,6 @@ export default function Reminders() {
               <Button title="Save reminders" onPress={save} loading={saving} disabled={enabled && !days.length} />
             </View>
           </>
-        )}
-      </SafeAreaView>
-    </View>
   );
 }
 
