@@ -1,11 +1,11 @@
 import type { IconName } from '@/components/ui';
 import type { OnboardingAnswers, OnboardingOptions } from '@/lib/types';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Animated, Easing, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Animated, Easing, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/stores/auth';
@@ -70,7 +70,6 @@ export default function Onboarding() {
   const { data: opts, isLoading, error, refetch } = useOnboardingOptions();
   const { step, answers, setAnswers, goTo, syncRemote, reset, hydrated } = useOnboarding();
   const status = useAuth((s) => s.status);
-  const user = useAuth((s) => s.user);
   const register = useAuth((s) => s.register);
   const refreshMe = useAuth((s) => s.refreshMe);
   const [summary, setSummary] = useState<any>(null);
@@ -81,15 +80,15 @@ export default function Onboarding() {
   const index = Math.min(step, steps.length - 1);
   const key = steps[index];
 
-  const anim = useRef(new Animated.Value(1)).current;
-  const dir = useRef(1);
+  const anim = useState(() => new Animated.Value(1))[0];
+  const [dir, setDir] = useState(1);
   useEffect(() => {
     anim.setValue(0);
     Animated.timing(anim, { toValue: 1, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [index, anim]);
 
   const go = (next: number) => {
-    dir.current = next > index ? 1 : -1;
+    setDir(next > index ? 1 : -1);
     goTo(Math.max(0, Math.min(next, steps.length - 1)));
     if (status === 'authed') syncRemote(steps[next] ?? 'complete');
   };
@@ -174,7 +173,7 @@ export default function Onboarding() {
           style={{
             flex: 1,
             opacity: anim,
-            transform: [{ translateX: anim.interpolate({ inputRange: [0, 1], outputRange: [28 * dir.current, 0] }) }],
+            transform: [{ translateX: anim.interpolate({ inputRange: [0, 1], outputRange: [28 * dir, 0] }) }],
           }}
         >
           {isLoading || !opts ? (
@@ -221,10 +220,9 @@ export default function Onboarding() {
 }
 
 function alertError(e: unknown) {
-  // eslint-disable-next-line no-alert
   const msg = e instanceof Error ? e.message : 'Something went wrong';
   if (Platform.OS === 'web') globalThis.alert?.(msg);
-  else require('react-native').Alert.alert('Could not continue', msg);
+  else Alert.alert('Could not continue', msg);
 }
 
 // ----------------------------------------------------------------------
@@ -444,7 +442,7 @@ function StepBody({
 // ----------------------------------------------------------------------
 
 function MotivationStep({ message, goal }: { message: string; goal?: string }) {
-  const scale = useRef(new Animated.Value(0.85)).current;
+  const scale = useState(() => new Animated.Value(0.85))[0];
   useEffect(() => {
     Animated.spring(scale, { toValue: 1, friction: 5, useNativeDriver: true }).start();
   }, [scale]);
@@ -473,11 +471,15 @@ function RemindersStep({ answers, setAnswers }: { answers: OnboardingAnswers; se
   const [denied, setDenied] = useState(false);
 
   const enable = async () => {
+    if (r?.enabled) return;
+    // Select immediately; the permission prompt follows and never blocks the choice.
+    setAnswers({
+      reminders: { enabled: true, days: r?.days?.length ? r.days : [1, 3, 5], time: r?.time ?? '07:00', permissionGranted: null, timezone: deviceTimezone() },
+    });
     const granted = await requestReminderPermission();
     setDenied(!granted && Platform.OS !== 'web');
-    setAnswers({
-      reminders: { enabled: true, days: r?.days?.length ? r.days : [1, 3, 5], time: r?.time ?? '07:00', permissionGranted: granted, timezone: deviceTimezone() },
-    });
+    const latest = useOnboarding.getState().answers.reminders;
+    if (latest?.enabled) setAnswers({ reminders: { ...latest, permissionGranted: granted } });
   };
 
   return (
@@ -695,7 +697,7 @@ function AccountStep({
 }
 
 function CompleteStep({ summary, answers, opts, onDone }: { summary: any; answers: OnboardingAnswers; opts: OnboardingOptions; onDone: () => void }) {
-  const scale = useRef(new Animated.Value(0.6)).current;
+  const scale = useState(() => new Animated.Value(0.6))[0];
   useEffect(() => {
     haptic.success();
     Animated.spring(scale, { toValue: 1, friction: 4, useNativeDriver: true }).start();
