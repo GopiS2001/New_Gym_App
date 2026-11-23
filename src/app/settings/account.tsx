@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { ScrollView, Share, View } from 'react-native';
@@ -11,6 +11,7 @@ import { useProfile } from '@/lib/queries';
 import { confirm } from '@/lib/workout';
 import { cancelReminders } from '@/lib/reminders';
 import { useSession } from '@/stores/session';
+import { useOutbox } from '@/stores/outbox';
 import { Button, Card, Divider, Header, haptic, Text, TextField } from '@/components/ui';
 
 export default function Account() {
@@ -25,9 +26,11 @@ export default function Account() {
   const [msg, setMsg] = useState<{ section: string; text: string; ok?: boolean } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (p) setName(p.name);
-  }, [p]);
+  const [loadedFor, setLoadedFor] = useState<number | null>(null);
+  if (p && loadedFor !== p.id) {
+    setLoadedFor(p.id);
+    setName(p.name);
+  }
 
   const run = async (section: string, fn: () => Promise<unknown>, ok: string) => {
     setBusy(section);
@@ -49,7 +52,20 @@ export default function Account() {
     router.replace('/welcome');
   };
 
-  const Note = ({ section }: { section: string }) =>
+  /** Log out after confirming; mentions unsynced or in-progress workouts. */
+  const confirmSignOut = async () => {
+    const pending = useOutbox.getState().items.length;
+    const active = useSession.getState().active;
+    const notes = [
+      active ? `Your workout in progress ("${active.title}") stays on this phone.` : '',
+      pending ? `${pending} finished workout${pending > 1 ? 's' : ''} will sync when you log back in.` : '',
+    ].filter(Boolean);
+    const message = ['You will need to log in again to use FitFlow.', ...notes].join('\n\n');
+    const ok = await confirm('Log out?', message, 'Log out');
+    if (ok) await signOut();
+  };
+
+  const note = (section: string) =>
     msg?.section === section ? (
       <Text variant="small" color={msg.ok ? colors.accent : colors.danger}>
         {msg.text}
@@ -86,7 +102,7 @@ export default function Account() {
             {p && !p.emailVerified && (
               <Button title="Resend verification email" variant="ghost" size="sm" onPress={() => run('name', () => api.post('/auth/resend-verification'), 'Verification email sent')} />
             )}
-            <Note section="name" />
+            {note('name')}
           </Card>
 
           <Card style={{ gap: 12 }}>
@@ -110,7 +126,7 @@ export default function Account() {
                 )
               }
             />
-            <Note section="pw" />
+            {note('pw')}
           </Card>
 
           <Card style={{ gap: 12 }}>
@@ -135,10 +151,10 @@ export default function Account() {
                 )
               }
             />
-            <Note section="export" />
+            {note('export')}
           </Card>
 
-          <Button title="Log out" variant="secondary" icon="log-out-outline" onPress={signOut} />
+          <Button title="Log out" variant="secondary" icon="log-out-outline" onPress={confirmSignOut} />
 
           <Divider style={{ marginVertical: 8 }} />
 
@@ -170,7 +186,7 @@ export default function Account() {
                 );
               }}
             />
-            <Note section="delete" />
+            {note('delete')}
           </Card>
         </ScrollView>
       </SafeAreaView>
