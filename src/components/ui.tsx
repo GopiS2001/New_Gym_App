@@ -201,22 +201,27 @@ export function IconButton({
   size?: number;
   color?: string;
 }) {
+  const press = usePressScale(0.88);
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      hitSlop={6}
-      onPress={() => {
-        haptic.select();
-        onPress?.();
-      }}
-      style={({ pressed }) => [
-        styles.iconButton,
-        { width: size, height: size, borderRadius: size / 2, backgroundColor: active ? colors.accent : colors.surface2, opacity: pressed ? 0.7 : 1 },
-      ]}
-    >
-      <Icon name={icon} size={size * 0.46} color={color ?? (active ? colors.accentText : colors.text)} />
-    </Pressable>
+    <Animated.View style={{ transform: [{ scale: press.scale }] }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        hitSlop={6}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
+        onPress={() => {
+          haptic.select();
+          onPress?.();
+        }}
+        style={({ pressed }) => [
+          styles.iconButton,
+          { width: size, height: size, borderRadius: size / 2, backgroundColor: active ? colors.accent : colors.surface2, opacity: pressed ? 0.85 : 1 },
+        ]}
+      >
+        <Icon name={icon} size={size * 0.46} color={color ?? (active ? colors.accentText : colors.text)} />
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -246,18 +251,27 @@ export function Card({
     </LinearGradient>
   );
   if (!onPress) return body;
+  return <PressableCard onPress={onPress} accessibilityLabel={accessibilityLabel}>{body}</PressableCard>;
+}
+
+function PressableCard({ children, onPress, accessibilityLabel }: { children: ReactNode; onPress: () => void; accessibilityLabel?: string }) {
+  const press = usePressScale(0.97);
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      onPress={() => {
-        haptic.select();
-        onPress();
-      }}
-      style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] })}
-    >
-      {body}
-    </Pressable>
+    <Animated.View style={{ transform: [{ scale: press.scale }] }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
+        onPress={() => {
+          haptic.select();
+          onPress();
+        }}
+        style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
+      >
+        {children}
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -283,17 +297,26 @@ export function Chip({
     </View>
   );
   if (!onPress) return content;
+  return <PressableChip selected={selected} onPress={onPress}>{content}</PressableChip>;
+}
+
+function PressableChip({ children, selected, onPress }: { children: ReactNode; selected?: boolean; onPress: () => void }) {
+  const press = usePressScale(0.92);
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      onPress={() => {
-        haptic.select();
-        onPress();
-      }}
-    >
-      {content}
-    </Pressable>
+    <Animated.View style={{ transform: [{ scale: press.scale }] }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ selected }}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
+        onPress={() => {
+          haptic.select();
+          onPress();
+        }}
+      >
+        {children}
+      </Pressable>
+    </Animated.View>
   );
 }
 
