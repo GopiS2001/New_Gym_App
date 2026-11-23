@@ -49,7 +49,6 @@ function RemindersForm({ p }: { p: Profile }) {
       setGranted(ok);
       if (ok) registerPushToken();
     }
-    if (v && !days.length) setDays([1, 3, 5]);
   };
 
   const save = async () => {
