@@ -1,7 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react';
 import type { StyleProp, TextStyle, ViewStyle, TextInputProps } from 'react-native';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 
 import { colors, fonts, radius, type, TypeVariant } from '@/theme/tokens';
+import { motion, useCountUp, useReducedMotion } from '@/lib/motion';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -83,15 +84,17 @@ export function Screen({
       <SafeAreaView edges={edges} style={{ flex: 1 }}>
         {scroll ? (
           <ScrollView
-            contentContainerStyle={[pad, { paddingBottom: 120 }, contentStyle]}
+            contentContainerStyle={[pad, { paddingTop: 16, paddingBottom: 120 }, contentStyle]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             refreshControl={refreshControl}
           >
-            {children}
+            <FadeIn distance={18}>{children}</FadeIn>
           </ScrollView>
         ) : (
-          <View style={[{ flex: 1 }, pad, contentStyle]}>{children}</View>
+          <FadeIn distance={18} style={[{ flex: 1, paddingTop: 16 }, pad, contentStyle]}>
+            {children}
+          </FadeIn>
         )}
         {footer}
       </SafeAreaView>
@@ -136,7 +139,7 @@ type ButtonProps = {
 };
 
 export function Button({ title, onPress, variant = 'primary', icon, loading, disabled, size = 'lg', style, full = true }: ButtonProps) {
-  const scale = useRef(new Animated.Value(1)).current;
+  const { scale, onPressIn, onPressOut } = usePressScale(0.97);
   const bg =
     variant === 'primary' ? colors.accent : variant === 'danger' ? 'rgba(255,93,99,0.14)' : variant === 'secondary' ? colors.surface2 : 'transparent';
   const fg = variant === 'primary' ? colors.accentText : variant === 'danger' ? colors.danger : colors.text;
@@ -149,8 +152,8 @@ export function Button({ title, onPress, variant = 'primary', icon, loading, dis
         accessibilityLabel={title}
         accessibilityState={{ disabled: disabled || loading, busy: loading }}
         disabled={disabled || loading}
-        onPressIn={() => Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 40 }).start()}
-        onPressOut={() => Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 30 }).start()}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
         onPress={() => {
           haptic.light();
           onPress?.();
@@ -294,13 +297,33 @@ export function Chip({
   );
 }
 
+/**
+ * Counts the first number in a label up from 0 ("1,288 kg", "2/4", "45m").
+ * Non-numeric labels are shown as-is.
+ */
+export function CountUpText({ value }: { value: string }) {
+  const match = value.match(/^([^0-9]*)([0-9,]+(?:[.][0-9]+)?)(.*)$/);
+  const raw = match ? Number(match[2].replace(/,/g, '')) : NaN;
+  const current = useCountUp(Number.isFinite(raw) ? raw : 0);
+  if (!match || !Number.isFinite(raw)) return <>{value}</>;
+  const decimals = match[2].includes('.') ? match[2].split('.')[1].length : 0;
+  const shown = decimals ? current.toFixed(decimals) : Math.round(current).toLocaleString();
+  return (
+    <>
+      {match[1]}
+      {shown}
+      {match[3]}
+    </>
+  );
+}
+
 /** Square stat tile with icon, value and caption (design: "420 KCAL"). */
 export function StatTile({ icon, value, label, tint = colors.accent, style }: { icon: IconName; value: string; label: string; tint?: string; style?: StyleProp<ViewStyle> }) {
   return (
     <Card style={[{ alignItems: 'center', paddingVertical: 14, paddingHorizontal: 6, gap: 6 }, style]}>
       <Icon name={icon} size={22} color={tint} />
-      <Text variant="bodyStrong" style={{ fontSize: 17 }}>
-        {value}
+      <Text variant="bodyStrong" style={{ fontSize: 17 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+        <CountUpText value={value} />
       </Text>
       <Text variant="caption" color={colors.muted} numberOfLines={1}>
         {label}
@@ -374,7 +397,7 @@ export function TextField({
 // ----------------------------------------------------------------------
 
 export function Skeleton({ height = 16, width = '100%', radius: r = 12, style }: { height?: number; width?: number | `${number}%`; radius?: number; style?: StyleProp<ViewStyle> }) {
-  const pulse = useRef(new Animated.Value(0.45)).current;
+  const pulse = useState(() => new Animated.Value(0.45))[0];
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
@@ -419,17 +442,51 @@ export function ErrorState({ message, onRetry }: { message?: string; onRetry?: (
   );
 }
 
-/** Fade + rise entrance; respects nothing heavy so it stays fast. */
-export function FadeIn({ children, delay = 0, style }: { children: ReactNode; delay?: number; style?: StyleProp<ViewStyle> }) {
-  const v = useRef(new Animated.Value(0)).current;
+const NATIVE = Platform.OS !== 'web';
+
+/**
+ * Fade + rise entrance. Pass `index` to cascade list items. Skipped entirely
+ * when the system "Reduce motion" setting is on.
+ */
+export function FadeIn({
+  children,
+  delay = 0,
+  index,
+  distance = 14,
+  style,
+}: {
+  children: ReactNode;
+  delay?: number;
+  index?: number;
+  distance?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const reduce = useReducedMotion();
+  const v = useState(() => new Animated.Value(reduce ? 1 : 0))[0];
+  const wait = delay + (index != null ? motion.stagger(index) : 0);
   useEffect(() => {
-    Animated.timing(v, { toValue: 1, duration: 380, delay, useNativeDriver: true }).start();
-  }, [v, delay]);
+    if (reduce) {
+      v.setValue(1);
+      return;
+    }
+    Animated.timing(v, { toValue: 1, duration: motion.base, delay: wait, easing: motion.easeOut, useNativeDriver: NATIVE }).start();
+  }, [v, wait, reduce]);
   return (
-    <Animated.View style={[{ opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }, style]}>
+    <Animated.View style={[{ opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [distance, 0] }) }] }, style]}>
       {children}
     </Animated.View>
   );
+}
+
+/** Press "squish" used by every tappable surface. */
+export function usePressScale(to = 0.96) {
+  const reduce = useReducedMotion();
+  const scale = useState(() => new Animated.Value(1))[0];
+  return {
+    scale,
+    onPressIn: () => !reduce && Animated.spring(scale, { toValue: to, useNativeDriver: NATIVE, speed: 50, bounciness: 0 }).start(),
+    onPressOut: () => !reduce && Animated.spring(scale, { toValue: 1, useNativeDriver: NATIVE, speed: 30, bounciness: 6 }).start(),
+  };
 }
 
 export function Divider({ style }: { style?: StyleProp<ViewStyle> }) {
@@ -443,7 +500,7 @@ export function Row({ children, gap = 12, style }: { children: ReactNode; gap?: 
 // ----------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, gap: 8 },
   button: { borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
   glow: {
     shadowColor: colors.accent,
