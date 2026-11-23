@@ -55,7 +55,9 @@ export function ExerciseVideo({
 
 function Player({ source, posterUri, loop, style, rounded }: { source: string; posterUri?: string | null; loop: boolean; style?: StyleProp<ViewStyle>; rounded: number }) {
   const player = useVideoPlayer(source, (p) => {
-    p.loop = loop;
+    // Always repeat: when the video ends it starts again automatically.
+    p.loop = true;
+    // The silent workout demo stays muted; the tap-to-play version keeps sound.
     p.muted = loop;
     p.play();
   });
