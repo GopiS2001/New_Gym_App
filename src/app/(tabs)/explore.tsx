@@ -56,9 +56,9 @@ export default function Explore() {
 
       {/* Discovery areas */}
       <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
-        <AreaCard icon="calendar" title="Programs" caption={`${programs.data?.meta.total ?? '–'} plans`} onPress={() => router.push('/programs')} />
+        <AreaCard icon="calendar" title="Programs" caption={programs.data ? `${programs.data.meta.total} plan${programs.data.meta.total === 1 ? '' : 's'}` : '–'} onPress={() => router.push('/programs')} />
         <AreaCard icon="barbell" title="Exercises" caption="Library" onPress={() => router.push('/exercises/all')} accent />
-        <AreaCard icon="people" title="Coaches" caption={`${coaches.data?.length ?? '–'} experts`} onPress={() => router.push('/coaches')} />
+        <AreaCard icon="people" title="Coaches" caption={coaches.data ? (coaches.data.length ? `${coaches.data.length} expert${coaches.data.length === 1 ? '' : 's'}` : 'Coming soon') : '–'} onPress={() => router.push('/coaches')} />
       </View>
 
       {/* Categories */}
@@ -82,8 +82,10 @@ export default function Explore() {
                     ) : (
                       <Icon name={CATEGORY_ICONS[c.slug] ?? 'fitness'} size={26} color={colors.accent} />
                     )}
+                    {/* Dim the photo so it sits back and the title stands out. */}
+                    {c.imageUrl && <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(7,14,22,0.45)' }]} />}
                     {c.imageUrl && <LinearGradient colors={['transparent', 'rgba(7,14,22,0.85)']} style={StyleSheet.absoluteFill} />}
-                    <Text variant="smallStrong" style={c.imageUrl ? { position: 'absolute', bottom: 8, left: 10 } : { marginTop: 6 }}>
+                    <Text variant="smallStrong" style={c.imageUrl ? { position: 'absolute', bottom: 4, left: 6, right: 6, textAlign: 'center' } : { marginTop: 6, textAlign: 'center' }}>
                       {c.name}
                     </Text>
                   </Pressable>
