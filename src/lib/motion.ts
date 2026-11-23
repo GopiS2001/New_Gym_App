@@ -49,18 +49,17 @@ export function useCountUp(target: number, duration = 700) {
   const [value, setValue] = useState(reduce ? target : 0);
   const [anim] = useState(() => new Animated.Value(0));
 
+  const animate = !reduce && Number.isFinite(target);
+
   useEffect(() => {
-    if (reduce || !Number.isFinite(target)) {
-      setValue(target);
-      return undefined;
-    }
+    if (!animate) return undefined;
     anim.setValue(0);
     const id = anim.addListener(({ value: v }) => setValue(v * target));
     Animated.timing(anim, { toValue: 1, duration, easing: motion.easeOut, useNativeDriver: false }).start(() => setValue(target));
     return () => anim.removeListener(id);
-  }, [target, duration, reduce, anim]);
+  }, [target, duration, animate, anim]);
 
-  return value;
+  return animate ? value : target;
 }
 
 /** 0 → 1 progress over `duration` once on mount (for rings, bars, charts). */
