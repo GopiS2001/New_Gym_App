@@ -55,7 +55,8 @@ export function ProgressRing({
 
 // ----------------------------------------------------------------------
 
-function smoothPath(points: { x: number; y: number }[]) {
+function smoothPath(points: { x: number; y: number }[], minY = -Infinity, maxY = Infinity) {
+  const cy = (v: number) => Math.max(minY, Math.min(maxY, v));
   if (points.length < 2) return '';
   let d = `M ${points[0].x} ${points[0].y}`;
   for (let i = 0; i < points.length - 1; i++) {
@@ -64,9 +65,9 @@ function smoothPath(points: { x: number; y: number }[]) {
     const p2 = points[i + 1];
     const p3 = points[i + 2] ?? p2;
     const cp1x = p1.x + (p2.x - p0.x) / 6;
-    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp1y = cy(p1.y + (p2.y - p0.y) / 6);
     const cp2x = p2.x - (p3.x - p1.x) / 6;
-    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    const cp2y = cy(p2.y - (p3.y - p1.y) / 6);
     d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
   }
   return d;
@@ -82,7 +83,7 @@ export function AreaChart({
   formatValue = (v) => String(v),
   unit,
 }: {
-  data: { label: string; value: number }[];
+  data: { label: string; value: number; axis?: string }[];
   height?: number;
   formatValue?: (v: number) => string;
   unit?: string;
@@ -98,7 +99,7 @@ export function AreaChart({
     const max = Math.max(1, ...data.map((d) => d.value));
     const step = data.length > 1 ? (width - padX * 2) / (data.length - 1) : 0;
     const p = data.map((d, i) => ({ x: padX + i * step, y: padTop + (chartH - padTop) * (1 - d.value / max) }));
-    const l = smoothPath(p);
+    const l = smoothPath(p, padTop, chartH);
     return { pts: p, line: l, area: `${l} L ${p[p.length - 1].x} ${chartH} L ${p[0].x} ${chartH} Z` };
   }, [width, data, chartH]);
 
@@ -154,7 +155,7 @@ export function AreaChart({
           {pts.map((p, i) =>
             i % labelEvery === 0 || i === pts.length - 1 ? (
               <Text key={i} variant="caption" color={colors.muted} style={{ position: 'absolute', left: Math.max(0, Math.min(width - 32, p.x - 16)), width: 32, textAlign: 'center', fontSize: 10 }}>
-                {data[i].label.split(' ')[0]}
+                {data[i].axis ?? data[i].label.split(' ').find((t) => /[0-9]/.test(t)) ?? data[i].label}
               </Text>
             ) : null
           )}
