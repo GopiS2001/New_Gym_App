@@ -33,8 +33,6 @@ export default function HomeScreen() {
   const w = data?.weeklyProgress;
   const program = data?.currentProgram;
   const today = data?.todaysWorkout;
-  const totalWorkouts = program ? program.program.durationWeeks * 0 : 0; // computed from program detail below
-  void totalWorkouts;
 
   const startToday = async () => {
     if (!program || !today) return;
