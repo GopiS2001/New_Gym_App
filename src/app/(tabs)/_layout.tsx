@@ -10,6 +10,7 @@ import { useAuth } from '@/stores/auth';
 import { colors } from '@/theme/tokens';
 import { haptic, Icon } from '@/components/ui';
 import { useReducedMotion } from '@/lib/motion';
+import { confirmSignOut } from '@/lib/sign-out';
 
 const BAR_HEIGHT = 68;
 const ICON_SIZE = 48;
