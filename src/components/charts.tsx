@@ -1,12 +1,27 @@
-import { useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Animated, View } from 'react-native';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from 'react-native-svg';
 
 import { colors } from '@/theme/tokens';
+import { motion, useGrow, useReducedMotion } from '@/lib/motion';
 
 import { Text } from './ui';
 
 // ----------------------------------------------------------------------
+
+/** Tweens a number towards `target` (instant with reduce-motion). */
+function useAnimatedNumber(target: number, duration = motion.slow + 200) {
+  const reduce = useReducedMotion();
+  const [shown, setShown] = useState(reduce ? target : 0);
+  const [anim] = useState(() => new Animated.Value(reduce ? target : 0));
+  useEffect(() => {
+    if (reduce) return undefined;
+    const id = anim.addListener(({ value: v }) => setShown(v));
+    Animated.timing(anim, { toValue: target, duration, easing: motion.easeOut, useNativeDriver: false }).start();
+    return () => anim.removeListener(id);
+  }, [target, duration, reduce, anim]);
+  return reduce ? target : shown;
+}
 
 /** Circular progress ring (design: "85% Completed"). */
 export function ProgressRing({
@@ -24,7 +39,8 @@ export function ProgressRing({
 }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
-  const pct = Math.max(0, Math.min(100, value));
+  const target = Math.max(0, Math.min(100, value));
+  const pct = useAnimatedNumber(target);
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }} accessibilityLabel={`${Math.round(pct)} percent ${sublabel ?? ''}`}>
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
@@ -103,6 +119,7 @@ export function AreaChart({
     return { pts: p, line: l, area: `${l} L ${p[p.length - 1].x} ${chartH} L ${p[0].x} ${chartH} Z` };
   }, [width, data, chartH]);
 
+  const grow = useGrow(motion.slow, 80, [data.length]);
   const labelEvery = Math.max(1, Math.ceil(data.length / 7));
   const sel = active ?? data.length - 1;
 
@@ -117,7 +134,7 @@ export function AreaChart({
           </Text>
         </Text>
       )}
-      <View style={{ height }}>
+      <Animated.View style={{ height, opacity: grow, transform: [{ translateY: grow.interpolate({ inputRange: [0, 1], outputRange: [28, 0] }) }] }}>
         {width > 0 && (
           <Svg width={width} height={height}>
             <Defs>
@@ -160,7 +177,7 @@ export function AreaChart({
             ) : null
           )}
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -168,15 +185,16 @@ export function AreaChart({
 /** Thin single-hue bars for per-day counts. */
 export function BarStrip({ data, height = 120 }: { data: { label: string; value: number }[]; height?: number }) {
   const max = Math.max(1, ...data.map((d) => d.value));
+  const grow = useGrow(motion.slow + 200, 100, [data.map((d) => d.value).join(',')]);
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-end', height, gap: 6 }}>
       {data.map((d, i) => (
         <View key={i} style={{ flex: 1, alignItems: 'center', gap: 6 }} accessibilityLabel={`${d.label}: ${d.value}`}>
-          <View
+          <Animated.View
             style={{
               width: '70%',
               maxWidth: 18,
-              height: Math.max(4, ((height - 24) * d.value) / max),
+              height: grow.interpolate({ inputRange: [0, 1], outputRange: [4, Math.max(4, ((height - 24) * d.value) / max)] }),
               borderTopLeftRadius: 6,
               borderTopRightRadius: 6,
               backgroundColor: d.value ? colors.accent : colors.surface3,

@@ -8,10 +8,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api, errorMessage } from '@/lib/api';
 import { colors } from '@/theme/tokens';
 import { useProfile } from '@/lib/queries';
+import { TimePicker } from '@/components/time-picker';
 import { cancelReminders, DAY_LABELS, deviceTimezone, registerPushToken, requestReminderPermission, scheduleWeeklyReminders } from '@/lib/reminders';
-import { Button, Card, Chip, Header, haptic, Row, Skeleton, Text } from '@/components/ui';
+import { Button, Card, Header, haptic, Row, Skeleton, Text } from '@/components/ui';
 
-const TIMES = ['06:00', '07:00', '08:00', '09:00', '12:00', '17:00', '18:00', '19:00', '20:00', '21:00'];
 
 export default function Reminders() {
   const { data: p, isLoading } = useProfile();
@@ -119,11 +119,7 @@ function RemindersForm({ p }: { p: Profile }) {
                     })}
                   </Row>
                   <Text variant="h3">Time</Text>
-                  <Row gap={8} style={{ flexWrap: 'wrap' }}>
-                    {TIMES.map((t) => (
-                      <Chip key={t} label={t} selected={time === t} onPress={() => setTime(t)} />
-                    ))}
-                  </Row>
+                  <TimePicker value={time} onChange={setTime} />
                 </>
               )}
               {message && (

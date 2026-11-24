@@ -1,19 +1,19 @@
 import type { StyleProp, ViewStyle } from 'react-native';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useEvent } from 'expo';
-import { useVideoPlayer, VideoView } from 'expo-video';
+import { useVideoPlayer, VideoPlayer, VideoView } from 'expo-video';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { mediaUrl } from '@/lib/media';
 import { colors } from '@/theme/tokens';
 
 import { Cover } from './content';
-import { Icon, Text } from './ui';
+import { haptic, Icon, Text } from './ui';
 
 /**
  * Exercise video with the cover image as a poster.
- * - `mode="tap"`: shows the poster with a play button; tapping starts playback with controls.
+ * - `mode="tap"`: shows the poster with a play button; tapping starts playback with controls and repeats.
  * - `mode="loop"`: plays muted on a loop (form demo during a workout).
  * Falls back to the image with a message if the video can't load.
  */
@@ -23,19 +23,22 @@ export function ExerciseVideo({
   mode = 'tap',
   style,
   rounded = 0,
+  muteTop = 12,
 }: {
   uri: string;
   posterUri?: string | null;
   mode?: 'tap' | 'loop';
   style?: StyleProp<ViewStyle>;
   rounded?: number;
+  /** Distance from the top for the mute button (e.g. to clear a header). */
+  muteTop?: number;
 }) {
   const [started, setStarted] = useState(mode === 'loop');
   const source = mediaUrl(uri);
 
   if (!started) {
     return (
-      <Cover uri={posterUri} style={style} rounded={rounded} icon="videocam">
+      <Cover uri={posterUri} videoUri={uri} style={style} rounded={rounded} icon="videocam">
         <Pressable
           onPress={() => setStarted(true)}
           accessibilityRole="button"
@@ -50,10 +53,31 @@ export function ExerciseVideo({
     );
   }
 
-  return <Player source={source ?? uri} posterUri={posterUri} loop={mode === 'loop'} style={style} rounded={rounded} />;
+  return <Player source={source ?? uri} posterUri={posterUri} loop={mode === 'loop'} style={style} rounded={rounded} muteTop={muteTop} />;
 }
 
-function Player({ source, posterUri, loop, style, rounded }: { source: string; posterUri?: string | null; loop: boolean; style?: StyleProp<ViewStyle>; rounded: number }) {
+/** expo-video players are configured by setting properties (per the expo-video docs). */
+function setPlayerMuted(player: VideoPlayer, muted: boolean) {
+  player.muted = muted;
+}
+
+function Player({
+  source,
+  posterUri,
+  loop,
+  style,
+  rounded,
+  muteTop,
+}: {
+  source: string;
+  posterUri?: string | null;
+  loop: boolean;
+  style?: StyleProp<ViewStyle>;
+  rounded: number;
+  muteTop: number;
+}) {
+  // Workout demos start muted; tap-to-play starts with sound. Either can be toggled.
+  const [muted, setMuted] = useState(loop);
   const player = useVideoPlayer(source, (p) => {
     // Always repeat: when the video ends it starts again automatically.
     p.loop = true;
@@ -62,6 +86,16 @@ function Player({ source, posterUri, loop, style, rounded }: { source: string; p
     p.play();
   });
   const { status, error } = useEvent(player, 'statusChange', { status: player.status });
+
+  // Keep the native player in sync with the button state.
+  useEffect(() => {
+    setPlayerMuted(player, muted);
+  }, [player, muted]);
+
+  const toggleMute = () => {
+    haptic.select();
+    setMuted((m) => !m);
+  };
 
   if (status === 'error') {
     return (
@@ -90,6 +124,16 @@ function Player({ source, posterUri, loop, style, rounded }: { source: string; p
           <ActivityIndicator color={colors.accent} />
         </View>
       )}
+      <Pressable
+        onPress={toggleMute}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={muted ? 'Unmute video' : 'Mute video'}
+        accessibilityState={{ checked: muted }}
+        style={[styles.mute, { top: muteTop }, !muted && { backgroundColor: colors.accent, borderColor: colors.accent }]}
+      >
+        <Icon name={muted ? 'volume-mute' : 'volume-high'} size={15} color={muted ? colors.text : colors.accentText} />
+      </Pressable>
     </View>
   );
 }
@@ -118,4 +162,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(7,14,22,0.8)',
   },
   loading: { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.25)' },
+  mute: {
+    position: 'absolute',
+    right: 12,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(7,14,22,0.7)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
 });

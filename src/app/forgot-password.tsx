@@ -4,13 +4,15 @@ import { View } from 'react-native';
 
 import { api, errorMessage } from '@/lib/api';
 import { colors } from '@/theme/tokens';
+import { CodeInput } from '@/components/code-input';
 import { Button, Card, Header, Icon, Screen, Text, TextField } from '@/components/ui';
 
-/** Request a reset link, then set a new password with the emailed token. */
+/** Request a 6-digit code by email, then set a new password with it. */
 export default function ForgotPassword() {
   const router = useRouter();
   const [email, setEmail] = useState('');
-  const [token, setToken] = useState('');
+  const [code, setCode] = useState('');
+  const [devCode, setDevCode] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [stage, setStage] = useState<'request' | 'reset' | 'done'>('request');
@@ -22,8 +24,9 @@ export default function ForgotPassword() {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.post<{ resetToken?: string }>('/auth/forgot-password', { email: email.trim() });
-      if (res.resetToken) setToken(res.resetToken); // development only
+      const res = await api.post<{ resetCode?: string }>('/auth/forgot-password', { email: email.trim() });
+      setDevCode(res.resetCode ?? null); // only when the server has no email set up (development)
+      setCode('');
       setStage('reset');
     } catch (e) {
       setError(errorMessage(e));
@@ -36,7 +39,8 @@ export default function ForgotPassword() {
     setLoading(true);
     setError(null);
     try {
-      await api.post('/auth/reset-password', { token: token.trim(), password, confirmPassword: confirm });
+      if (code.length !== 6) throw new Error('Enter the 6-digit code from your email');
+      await api.post('/auth/reset-password', { email: email.trim(), code, password, confirmPassword: confirm });
       setStage('done');
     } catch (e) {
       setError(errorMessage(e));
@@ -61,22 +65,32 @@ export default function ForgotPassword() {
         ) : stage === 'request' ? (
           <>
             <Text variant="body" color={colors.textSecondary}>
-              Enter the email you signed up with and we&apos;ll send a secure reset link.
+              Enter the email you signed up with and we&apos;ll send you a 6-digit reset code.
             </Text>
             <TextField label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" error={error ?? undefined} />
-            <Button title="Send reset link" onPress={request} loading={loading} />
+            <Button title="Send reset code" onPress={request} loading={loading} />
           </>
         ) : (
           <>
-            <Card>
-              <Text variant="small" color={colors.textSecondary}>
-                If an account exists for {email}, we sent a reset code. Paste it below with your new password.
-              </Text>
-            </Card>
-            <TextField label="Reset code" value={token} onChangeText={setToken} autoCapitalize="none" />
+            <Text variant="body" color={colors.textSecondary}>
+              If an account exists for <Text variant="bodyStrong">{email.trim()}</Text>, we sent a 6-digit code. It expires in 15 minutes.
+            </Text>
+            <CodeInput value={code} onChange={setCode} />
+            {devCode && (
+              <Card style={{ flexDirection: 'row', gap: 10, alignItems: 'center', borderColor: 'rgba(255,184,0,0.35)' }}>
+                <Icon name="construct" size={18} color={colors.warning} />
+                <Text variant="small" color={colors.textSecondary} style={{ flex: 1 }}>
+                  Email isn&apos;t set up on the server yet, so here is your code for testing:{' '}
+                  <Text variant="smallStrong" color={colors.text}>
+                    {devCode}
+                  </Text>
+                </Text>
+              </Card>
+            )}
             <TextField label="New password" value={password} onChangeText={setPassword} secure placeholder="8+ chars, upper, lower & number" />
             <TextField label="Confirm password" value={confirm} onChangeText={setConfirm} secure error={error ?? undefined} />
-            <Button title="Update password" onPress={reset} loading={loading} />
+            <Button title="Update password" onPress={reset} loading={loading} disabled={code.length !== 6} />
+            <Button title="Send a new code" variant="ghost" size="sm" onPress={request} />
           </>
         )}
       </View>

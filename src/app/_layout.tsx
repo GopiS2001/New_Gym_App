@@ -13,8 +13,12 @@ import * as Network from 'expo-network';
 import * as SplashScreen from 'expo-splash-screen';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 
+import { DialogHost } from '@/components/dialog-host';
+import { ToastHost } from '@/components/toast-host';
+import { usePresence } from '@/lib/presence';
+import { useLiveSession } from '@/lib/live';
 import { queryClient } from '@/lib/queries';
 import { useAuth } from '@/stores/auth';
 import { useOutbox } from '@/stores/outbox';
@@ -60,6 +64,11 @@ export default function RootLayout() {
     }
   }, [status, network.isConnected]);
 
+  // Online / offline for the admin dashboard.
+  usePresence(status === 'authed');
+  // Instant sign-out when an admin ends this session.
+  useLiveSession(status === 'authed');
+
   const ready = (fontsLoaded || !!fontError) && status !== 'loading';
 
   useEffect(() => {
@@ -71,7 +80,10 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
+        <PhoneFrame>
         <StatusBar style="light" />
+        <DialogHost />
+        <ToastHost />
         <Stack
           screenOptions={{
             headerShown: false,
@@ -86,7 +98,34 @@ export default function RootLayout() {
           <Stack.Screen name="session-complete" options={{ animation: 'fade', gestureEnabled: false }} />
           <Stack.Screen name="pick-exercise" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
         </Stack>
+        </PhoneFrame>
       </SafeAreaProvider>
     </QueryClientProvider>
+  );
+}
+
+/**
+ * FitFlow is a phone app. In a desktop browser (web preview) keep it in a
+ * centred phone-width column instead of stretching across the screen.
+ */
+function PhoneFrame({ children }: { children: React.ReactNode }) {
+  if (Platform.OS !== 'web') return <>{children}</>;
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bgDeep, alignItems: 'center' }}>
+      <View
+        style={{
+          flex: 1,
+          width: '100%',
+          maxWidth: 440,
+          overflow: 'hidden',
+          backgroundColor: colors.bg,
+          borderLeftWidth: 1,
+          borderRightWidth: 1,
+          borderColor: colors.border,
+        }}
+      >
+        {children}
+      </View>
+    </View>
   );
 }

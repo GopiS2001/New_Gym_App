@@ -2,7 +2,7 @@ import type { Person } from '@/lib/social';
 
 import { useState } from 'react';
 import { Image } from 'expo-image';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Animated, FlatList, Pressable, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { mediaUrl } from '@/lib/media';
@@ -13,7 +13,6 @@ import { useDebouncedValue } from '@/lib/hooks';
 import { colors, fonts, radius } from '@/theme/tokens';
 import { useFriendAction, useFriendRequests, useFriends, usePeople } from '@/lib/social';
 import { EmptyState, ErrorState, FadeIn, haptic, Icon, IconButton, Row, Skeleton, Text, usePressScale } from '@/components/ui';
-import { Animated } from 'react-native';
 
 type Tab = 'people' | 'friends' | 'requests';
 

@@ -11,7 +11,7 @@ export function useDebouncedValue<T>(value: T, delay = 300) {
 
 /** Re-renders every `ms` while `active`, returning Date.now(). */
 export function useTicker(active: boolean, ms = 1000) {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!active) return undefined;
     const t = setInterval(() => setNow(Date.now()), ms);

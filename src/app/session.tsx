@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { usePreventRemove } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Animated, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
@@ -12,9 +11,10 @@ import { useProfile } from '@/lib/queries';
 import { colors, fonts, radius } from '@/theme/tokens';
 import { ProgressRing } from '@/components/charts';
 import { Cover } from '@/components/content';
+import { ExerciseVideo } from '@/components/video';
 import { confirm, fmtDuration } from '@/lib/workout';
 import { LocalExercise, LocalSet, useSession } from '@/stores/session';
-import { Button, Card, Chip, EmptyState, haptic, Icon, IconButton, Row, Text } from '@/components/ui';
+import { Button, Card, Chip, EmptyState, FadeIn, haptic, Icon, IconButton, Row, Text } from '@/components/ui';
 
 // ----------------------------------------------------------------------
 
@@ -28,11 +28,6 @@ export default function SessionScreen() {
   const now = useTicker(!!active, 1000);
   const [finishOpen, setFinishOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
-
-  // Ask before leaving with unfinished work (Android back / gestures).
-  usePreventRemove(!!active && !leaving, () => {
-    router.replace('/(tabs)');
-  });
 
   useEffect(() => {
     if (!active && !leaving) router.replace('/(tabs)');
@@ -67,7 +62,7 @@ export default function SessionScreen() {
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
         {/* Top bar */}
-        <Row style={{ paddingHorizontal: 16, paddingVertical: 8, justifyContent: 'space-between' }}>
+        <Row style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, justifyContent: 'space-between' }}>
           <IconButton icon="chevron-down" label="Minimise workout" onPress={() => router.replace('/(tabs)')} />
           <View style={{ alignItems: 'center' }}>
             <Text variant="caption" color={colors.muted} numberOfLines={1}>
@@ -117,7 +112,11 @@ export default function SessionScreen() {
                 </Pressable>
               </ScrollView>
 
-              {ex && <ExercisePanel key={ex.key} ex={ex} index={active.currentIndex} count={active.exercises.length} unit={profile?.preferredWeightUnit ?? 'KG'} restLeft={restLeft} restTotal={active.restTotal} />}
+              {ex && (
+                <FadeIn key={ex.key} distance={20}>
+                  <ExercisePanel ex={ex} index={active.currentIndex} count={active.exercises.length} unit={profile?.preferredWeightUnit ?? 'KG'} restLeft={restLeft} restTotal={active.restTotal} />
+                </FadeIn>
+              )}
             </ScrollView>
 
             {/* Footer */}
@@ -188,7 +187,7 @@ function ExercisePanel({ ex, index, count, unit, restLeft, restTotal }: { ex: Lo
   const [distance, setDistance] = useState<string>(last?.distanceValue != null ? String(last.distanceValue) : '');
   const [rpe, setRpe] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
-  const flash = useRef(new Animated.Value(0)).current;
+  const flash = useState(() => new Animated.Value(0))[0];
 
   const has = (f: string) => fields.includes(f);
   const timed = has('duration') || has('hold');
@@ -236,6 +235,14 @@ function ExercisePanel({ ex, index, count, unit, restLeft, restTotal }: { ex: Lo
   return (
     <View style={{ gap: 14 }}>
       {/* Media card */}
+      {ex.videoUrl ? (
+        <View style={{ height: 210 }}>
+          <ExerciseVideo uri={ex.videoUrl} posterUri={ex.imageUrl} mode="loop" style={StyleSheet.absoluteFill} rounded={radius.xl} />
+          <Text variant="caption" color={colors.textSecondary} style={{ position: 'absolute', top: 12, left: 14 }}>
+            EXERCISE {index + 1} OF {count}
+          </Text>
+        </View>
+      ) : (
       <Cover uri={ex.imageUrl} style={{ height: 210 }} rounded={radius.xl}>
         <LinearGradient colors={['transparent', 'rgba(7,14,22,0.85)']} style={StyleSheet.absoluteFill} />
         <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: colors.accent, opacity: flash.interpolate({ inputRange: [0, 1], outputRange: [0, 0.25] }) }]} />
@@ -243,6 +250,7 @@ function ExercisePanel({ ex, index, count, unit, restLeft, restTotal }: { ex: Lo
           EXERCISE {index + 1} OF {count}
         </Text>
       </Cover>
+      )}
 
       <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <View style={{ flex: 1 }}>
@@ -415,7 +423,7 @@ function NumberInput({ label, value, onChange, placeholder }: { label: string; v
         keyboardType="decimal-pad"
         placeholder={placeholder}
         placeholderTextColor={colors.muted}
-        style={[styles.stepValue, { width: 120 }]}
+        style={[styles.stepValue, { width: 110 }]}
         accessibilityLabel={label}
         selectTextOnFocus
       />
@@ -519,7 +527,7 @@ const styles = StyleSheet.create({
   footer: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 6, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.bg },
   playBtn: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   stepValue: {
-    minWidth: 70,
+    width: 76,
     height: 44,
     borderRadius: radius.md,
     backgroundColor: colors.surface2,

@@ -6,10 +6,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useToggleSave } from '@/lib/queries';
+import { mediaUrl } from '@/lib/media';
+import { VideoFrame } from './video-frame';
 import { colors, radius } from '@/theme/tokens';
 import type { Difficulty, ExerciseCard, ProgramCard } from '@/lib/types';
 
-import { Card, Chip, haptic, Icon, IconName, Text } from './ui';
+import { Card, Chip, FadeIn, haptic, Icon, IconName, Text } from './ui';
 
 // ----------------------------------------------------------------------
 
@@ -18,12 +20,15 @@ export const difficultyLabel = (d?: Difficulty | string | null) => (d ? d[0] + d
 /** Image with a branded fallback when content has no photo yet. */
 export function Cover({
   uri,
+  videoUri,
   style,
   icon = 'barbell',
   rounded = radius.md,
   children,
 }: {
   uri?: string | null;
+  /** When there is no image, show this video's first frame instead. */
+  videoUri?: string | null;
   style?: StyleProp<ViewStyle>;
   icon?: IconName;
   rounded?: number;
@@ -32,12 +37,13 @@ export function Cover({
   return (
     <View style={[{ borderRadius: rounded, overflow: 'hidden', backgroundColor: colors.surface2 }, style]}>
       {uri ? (
-        <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} accessibilityIgnoresInvertColors />
+        <Image source={{ uri: mediaUrl(uri) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} accessibilityIgnoresInvertColors />
       ) : (
         <LinearGradient colors={[colors.surface3, colors.bgDeep]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, styles.center]}>
           <Icon name={icon} size={34} color="rgba(200,241,53,0.35)" />
         </LinearGradient>
       )}
+      {!uri && !!videoUri && <VideoFrame uri={videoUri} />}
       {children}
     </View>
   );
@@ -68,17 +74,15 @@ export function ExerciseTile({ item, width }: { item: ExerciseCard; width?: numb
   const router = useRouter();
   const save = useToggleSave('exercises');
   return (
+    <FadeIn auto style={{ width }}>
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${item.name}, ${difficultyLabel(item.difficulty)}`}
       onPress={() => router.push(`/exercise/${item.id}`)}
-      style={({ pressed }) => [{ width, opacity: pressed ? 0.85 : 1 }]}
+      style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
     >
-      <Cover uri={item.imageUrl} style={{ height: 150 }} rounded={radius.lg}>
+      <Cover uri={item.imageUrl} videoUri={item.videoUrl} style={{ height: 150 }} rounded={radius.lg}>
         <LinearGradient colors={['transparent', 'rgba(7,14,22,0.85)']} style={StyleSheet.absoluteFill} />
-        <View style={{ position: 'absolute', top: 8, right: 8 }}>
-          <SaveButton small saved={item.isSaved} onPress={() => save.mutate({ id: item.id, saved: !!item.isSaved })} />
-        </View>
         <View style={{ position: 'absolute', left: 10, bottom: 10, right: 10 }}>
           <Text variant="caption" color={colors.accent} numberOfLines={1}>
             {item.categories.map((c) => c.name).join(' · ') || item.exerciseType.name}
@@ -92,6 +96,10 @@ export function ExerciseTile({ item, width }: { item: ExerciseCard; width?: numb
         {[item.equipment[0]?.name, difficultyLabel(item.difficulty)].filter(Boolean).join(' • ')}
       </Text>
     </Pressable>
+      <View style={{ position: 'absolute', top: 8, right: 8 }}>
+        <SaveButton small saved={item.isSaved} onPress={() => save.mutate({ id: item.id, saved: !!item.isSaved })} />
+      </View>
+    </FadeIn>
   );
 }
 
@@ -99,9 +107,15 @@ export function ExerciseListItem({ item, right, onPress }: { item: ExerciseCard;
   const router = useRouter();
   const save = useToggleSave('exercises');
   return (
-    <Card onPress={onPress ?? (() => router.push(`/exercise/${item.id}`))} accessibilityLabel={item.name} style={{ padding: 10 }}>
+    <Card style={{ padding: 10 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <Cover uri={item.imageUrl} style={{ width: 72, height: 72 }} />
+        <Pressable
+          onPress={onPress ?? (() => router.push(`/exercise/${item.id}`))}
+          accessibilityRole="button"
+          accessibilityLabel={item.name}
+          style={({ pressed }) => ({ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: pressed ? 0.8 : 1 })}
+        >
+        <Cover uri={item.imageUrl} videoUri={item.videoUrl} style={{ width: 72, height: 72 }} />
         <View style={{ flex: 1, gap: 4 }}>
           <Text variant="bodyStrong" numberOfLines={1}>
             {item.name}
@@ -114,6 +128,7 @@ export function ExerciseListItem({ item, right, onPress }: { item: ExerciseCard;
             {item.shortDescription ? null : <Chip small label={item.exerciseType.name} />}
           </View>
         </View>
+        </Pressable>
         {right ?? <SaveButton small saved={item.isSaved} onPress={() => save.mutate({ id: item.id, saved: !!item.isSaved })} />}
       </View>
     </Card>
@@ -133,11 +148,12 @@ export function ProgramCardView({
 }) {
   const router = useRouter();
   return (
+    <FadeIn auto style={{ width }}>
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${item.name} program, ${item.durationWeeks} weeks`}
       onPress={() => router.push(`/program/${item.id}`)}
-      style={({ pressed }) => [{ width, opacity: pressed ? 0.88 : 1 }]}
+      style={({ pressed }) => [{ opacity: pressed ? 0.88 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] }]}
     >
       <Cover uri={item.imageUrl} icon="calendar" style={{ height: compact ? 150 : 190 }} rounded={radius.xl}>
         <LinearGradient colors={['rgba(7,14,22,0.05)', 'rgba(7,14,22,0.92)']} style={StyleSheet.absoluteFill} />
@@ -158,6 +174,7 @@ export function ProgramCardView({
         </View>
       </Cover>
     </Pressable>
+    </FadeIn>
   );
 }
 

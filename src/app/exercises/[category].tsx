@@ -133,7 +133,7 @@ export default function ExerciseList() {
               />
             )
           }
-          ListFooterComponent={query.isFetchingNextPage ? <Skeleton height={40} style={{ marginTop: 10 }} /> : null}
+          ListFooterComponent={query.isFetchingNextPage ? <Skeleton height={40} style={{ marginTop: 10 }} /> : undefined}
         />
       </SafeAreaView>
       <FilterSheet visible={sheet} value={filters} onClose={() => setSheet(false)} onApply={(f) => setFilters(f)} />

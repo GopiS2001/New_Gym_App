@@ -6,8 +6,9 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useAuth } from '@/stores/auth';
 import { colors, radius } from '@/theme/tokens';
-import { DAY_LABELS } from '@/lib/reminders';
+import { DAY_LABELS, formatTime12 } from '@/lib/reminders';
 import { useProfile, useProgress } from '@/lib/queries';
+import { mediaUrl } from '@/lib/media';
 import { Card, ErrorState, Icon, Row, Screen, SectionHeader, Skeleton, StatTile, Text } from '@/components/ui';
 
 export default function ProfileTab() {
@@ -17,21 +18,21 @@ export default function ProfileTab() {
   const month = useProgress('month');
 
   const items: { icon: IconName; title: string; value?: string; href: string }[] = [
-    { icon: 'flag-outline', title: 'Fitness goal', value: p?.goal?.name, href: '/settings/preferences' },
-    { icon: 'body-outline', title: 'Focus areas', value: p?.focusAreas.map((f) => f.name).join(', '), href: '/settings/preferences' },
-    { icon: 'trending-up-outline', title: 'Training experience', value: p?.experienceLevel?.name, href: '/settings/preferences' },
-    { icon: 'calendar-outline', title: 'Weekly target', value: p?.weeklyWorkoutDays ? `${p.weeklyWorkoutDays} days` : undefined, href: '/settings/preferences' },
-    { icon: 'barbell-outline', title: 'Equipment', value: p?.equipment.length ? `${p.equipment.length} items` : undefined, href: '/settings/preferences' },
+    { icon: 'flag-outline', title: 'Fitness goal', value: p?.goal?.name, href: '/settings/plan/goal' },
+    { icon: 'body-outline', title: 'Focus areas', value: p?.focusAreas.map((f) => f.name).join(', '), href: '/settings/plan/focus' },
+    { icon: 'trending-up-outline', title: 'Training experience', value: p?.experienceLevel?.name, href: '/settings/plan/experience' },
+    { icon: 'calendar-outline', title: 'Weekly target', value: p?.weeklyWorkoutDays ? `${p.weeklyWorkoutDays} days` : undefined, href: '/settings/plan/weekly' },
+    { icon: 'barbell-outline', title: 'Equipment', value: p?.equipment.length ? `${p.equipment.length} items` : undefined, href: '/settings/plan/equipment' },
   ];
   const settings: { icon: IconName; title: string; value?: string; href: string }[] = [
     { icon: 'scale-outline', title: 'Body measurements', value: p?.latestWeight ? `${p.latestWeight.value} ${p.latestWeight.unit}` : undefined, href: '/settings/measurements' },
     {
       icon: 'notifications-outline',
       title: 'Workout reminders',
-      value: p?.reminders.enabled ? `${p.reminders.days.map((d) => DAY_LABELS[d]).join(', ')} · ${p.reminders.time ?? ''}` : 'Off',
+      value: p?.reminders.enabled ? `${p.reminders.days.map((d) => DAY_LABELS[d]).join(', ')} · ${formatTime12(p.reminders.time)}` : 'Off',
       href: '/settings/reminders',
     },
-    { icon: 'options-outline', title: 'Units & preferences', value: p ? `${p.preferredWeightUnit.toLowerCase()} · ${p.preferredDistanceUnit.toLowerCase()}` : undefined, href: '/settings/preferences' },
+    { icon: 'options-outline', title: 'Units', value: p ? `${p.preferredWeightUnit.toLowerCase()} · ${p.preferredDistanceUnit.toLowerCase()}` : undefined, href: '/settings/plan/units' },
     { icon: 'shield-checkmark-outline', title: 'Account & privacy', href: '/settings/account' },
   ];
 
@@ -49,7 +50,7 @@ export default function ProfileTab() {
           <Card style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 14 }} onPress={() => router.push('/settings/account')} accessibilityLabel="Edit profile">
             <View style={styles.avatar}>
               {p?.avatarUrl ? (
-                <Image source={{ uri: p.avatarUrl }} style={{ width: '100%', height: '100%' }} />
+                <Image source={{ uri: mediaUrl(p.avatarUrl) ?? undefined }} style={{ width: '100%', height: '100%' }} />
               ) : (
                 <Text variant="h2" color={colors.accentText}>
                   {(p?.name ?? user?.name ?? '?')[0]?.toUpperCase()}
@@ -70,10 +71,29 @@ export default function ProfileTab() {
             <Icon name="chevron-forward" size={18} color={colors.muted} />
           </Card>
 
+          {p && !p.emailVerified && (
+            <Card
+              onPress={() => router.push({ pathname: '/verify-email', params: { send: '1' } })}
+              accessibilityLabel="Verify your email"
+              style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 12, borderColor: 'rgba(255,184,0,0.35)' }}
+            >
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,184,0,0.14)', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="mail-unread" size={20} color={colors.warning} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text variant="bodyStrong">Verify your email</Text>
+                <Text variant="small" color={colors.muted}>
+                  We&apos;ll send a 6-digit code to {p.email}
+                </Text>
+              </View>
+              <Icon name="chevron-forward" size={18} color={colors.muted} />
+            </Card>
+          )}
+
           <Row gap={10} style={{ marginTop: 14 }}>
             <StatTile style={{ flex: 1 }} icon="barbell" value={String(month.data?.allTimeWorkouts ?? 0)} label="WORKOUTS" />
             <StatTile style={{ flex: 1 }} icon="calendar" value={String(month.data?.workouts ?? 0)} label="THIS MONTH" />
-            <StatTile style={{ flex: 1 }} icon="flash" tint={colors.warning} value={`${Math.round((month.data?.totalVolumeKg ?? 0) / 1000)}t`} label="VOLUME" />
+            <StatTile style={{ flex: 1 }} icon="flash" tint={colors.warning} value={(month.data?.totalVolumeKg ?? 0) >= 1000 ? `${((month.data?.totalVolumeKg ?? 0) / 1000).toFixed(1)}t` : `${month.data?.totalVolumeKg ?? 0}kg`} label="VOLUME" />
           </Row>
 
           <SectionHeader title="My plan" />

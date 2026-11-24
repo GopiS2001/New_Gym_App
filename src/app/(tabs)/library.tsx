@@ -44,7 +44,7 @@ export default function LibraryTab() {
   };
 
   return (
-    <Screen refreshControl={<RefreshControl tintColor={colors.accent} refreshing={isRefetching} onRefresh={refetch} />}>
+    <Screen refreshControl={<RefreshControl tintColor={colors.accent} refreshing={isRefetching} onRefresh={() => { refetch(); }} />}>
       <Row style={{ justifyContent: 'space-between', marginTop: 12 }}>
         <Text variant="h1" accessibilityRole="header">
           Library
@@ -116,8 +116,14 @@ export default function LibraryTab() {
       ) : data?.collections.length ? (
         <View style={{ gap: 10 }}>
           {data.collections.map((c, i) => (
-            <Card key={c.id} onPress={() => router.push(`/collection/${c.id}`)} accessibilityLabel={`${c.name}, ${c.itemCount} items`}>
+            <Card key={c.id}>
               <Row>
+                <Pressable
+                  onPress={() => router.push(`/collection/${c.id}`)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${c.name}, ${c.itemCount} items`}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+                >
                 <View style={styles.collectionIcon}>
                   <Icon name="albums" size={22} color={colors.accent} />
                 </View>
@@ -127,6 +133,7 @@ export default function LibraryTab() {
                     {c.itemCount} item{c.itemCount === 1 ? '' : 's'}
                   </Text>
                 </View>
+                </Pressable>
                 <IconButton icon="chevron-up" label="Move up" size={34} onPress={() => i > 0 && move(i, -1)} />
                 <IconButton icon="chevron-down" label="Move down" size={34} onPress={() => i < data.collections.length - 1 && move(i, 1)} />
               </Row>

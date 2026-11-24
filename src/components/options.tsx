@@ -3,8 +3,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { colors, radius } from '@/theme/tokens';
+import { mediaUrl } from '@/lib/media';
 
-import { haptic, Icon, IconName, Text } from './ui';
+import { FadeIn, haptic, Icon, IconName, Text } from './ui';
 
 /** Selectable option card (single/multi select) used across onboarding & profile. */
 export function OptionCard({
@@ -23,6 +24,7 @@ export function OptionCard({
   onPress: () => void;
 }) {
   return (
+    <FadeIn auto>
     <Pressable
       accessibilityRole={multi ? 'checkbox' : 'radio'}
       accessibilityState={{ checked: selected }}
@@ -50,6 +52,7 @@ export function OptionCard({
         {selected && <Icon name="checkmark" size={14} color={colors.accentText} />}
       </View>
     </Pressable>
+    </FadeIn>
   );
 }
 
@@ -68,6 +71,7 @@ export function ImageOption({
   onPress: () => void;
 }) {
   return (
+    <FadeIn auto style={{ flexBasis: '47%', flexGrow: 1 }}>
     <Pressable
       accessibilityRole="checkbox"
       accessibilityState={{ checked: selected }}
@@ -79,14 +83,14 @@ export function ImageOption({
       style={({ pressed }) => [styles.tile, selected && styles.tileSelected, { transform: [{ scale: pressed ? 0.97 : 1 }] }]}
     >
       {imageUri ? (
-        <Image source={{ uri: imageUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        <Image source={{ uri: mediaUrl(imageUri) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
       ) : (
         <LinearGradient colors={[colors.surface3, colors.surface]} style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
           <Icon name={icon} size={30} color={selected ? colors.accent : colors.muted} />
         </LinearGradient>
       )}
       <LinearGradient colors={['transparent', 'rgba(7,14,22,0.9)']} style={StyleSheet.absoluteFill} />
-      <Text variant="bodyStrong" style={{ position: 'absolute', left: 12, bottom: 10 }}>
+      <Text variant="bodyStrong" style={{ position: 'absolute', left: 8, right: 8, bottom: 10, textAlign: 'center' }}>
         {title}
       </Text>
       {selected && (
@@ -95,6 +99,7 @@ export function ImageOption({
         </View>
       )}
     </Pressable>
+    </FadeIn>
   );
 }
 
@@ -121,8 +126,7 @@ const styles = StyleSheet.create({
   radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
   check: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
   tile: {
-    flexBasis: '47%',
-    flexGrow: 1,
+    width: '100%',
     height: 118,
     borderRadius: radius.lg,
     overflow: 'hidden',

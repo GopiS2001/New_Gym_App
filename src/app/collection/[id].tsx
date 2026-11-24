@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { goBack } from '@/lib/nav';
 import { api } from '@/lib/api';
 import { confirm } from '@/lib/workout';
 import { colors } from '@/theme/tokens';
@@ -27,7 +28,7 @@ export default function CollectionScreen() {
     if (!c || !(await confirm('Delete collection?', `"${c.name}" will be deleted. Saved items stay in your library.`, 'Delete'))) return;
     await api.delete(`/library/collections/${c.id}`);
     await refresh();
-    router.back();
+    goBack('/library');
   };
 
   const rename = async () => {

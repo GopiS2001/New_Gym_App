@@ -240,18 +240,28 @@ export function Card({
   accessibilityLabel?: string;
   highlight?: boolean;
 }) {
+  const { outer, inner } = splitLayout(style);
   const body = (
     <LinearGradient
       colors={highlight ? ['rgba(200,241,53,0.16)', 'rgba(23,38,54,0.95)'] : ['rgba(30,48,67,0.75)', 'rgba(17,29,41,0.92)']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
-      style={[styles.card, highlight && { borderColor: 'rgba(200,241,53,0.35)' }, style]}
+      style={[styles.card, highlight && { borderColor: 'rgba(200,241,53,0.35)' }, inner]}
     >
       {children}
     </LinearGradient>
   );
-  if (!onPress) return body;
-  return <PressableCard onPress={onPress} accessibilityLabel={accessibilityLabel}>{body}</PressableCard>;
+  return (
+    <FadeIn auto style={outer}>
+      {onPress ? (
+        <PressableCard onPress={onPress} accessibilityLabel={accessibilityLabel}>
+          {body}
+        </PressableCard>
+      ) : (
+        body
+      )}
+    </FadeIn>
+  );
 }
 
 function PressableCard({ children, onPress, accessibilityLabel }: { children: ReactNode; onPress: () => void; accessibilityLabel?: string }) {
@@ -386,7 +396,15 @@ export function TextField({
       <Text variant="smallStrong" color={colors.textSecondary}>
         {label}
       </Text>
-      <View style={[styles.input, focused && { borderColor: colors.accent }, !!error && { borderColor: colors.danger }]}>
+      <View
+        style={[
+          styles.input,
+          // Multi-line fields grow with their text.
+          rest.multiline && { height: undefined, minHeight: 110, alignItems: 'flex-start', paddingVertical: 12 },
+          focused && { borderColor: colors.accent },
+          !!error && { borderColor: colors.danger },
+        ]}
+      >
         <TextInput
           placeholderTextColor={colors.muted}
           secureTextEntry={secure && !visible}
@@ -467,6 +485,31 @@ export function ErrorState({ message, onRetry }: { message?: string; onRetry?: (
 
 const NATIVE = Platform.OS !== 'web';
 
+// Items that mount in the same burst (e.g. a list rendering) get increasing
+// delays automatically, producing a cascade without per-screen code.
+let burstCount = 0;
+let burstTimer: ReturnType<typeof setTimeout> | null = null;
+function autoDelay() {
+  const d = motion.stagger(burstCount++);
+  if (burstTimer) clearTimeout(burstTimer);
+  burstTimer = setTimeout(() => {
+    burstCount = 0;
+  }, 120);
+  return d;
+}
+
+const OUTER_KEYS = ['flex', 'flexGrow', 'flexShrink', 'flexBasis', 'width', 'minWidth', 'maxWidth', 'alignSelf', 'margin', 'marginTop', 'marginBottom', 'marginLeft', 'marginRight', 'marginHorizontal', 'marginVertical', 'position', 'top', 'left', 'right', 'bottom'];
+
+/** Splits layout props (for an animated wrapper) from visual props. */
+export function splitLayout(style: StyleProp<ViewStyle>) {
+  const flat = (StyleSheet.flatten(style) ?? {}) as Record<string, unknown>;
+  const outer: Record<string, unknown> = {};
+  const inner: Record<string, unknown> = {};
+  Object.entries(flat).forEach(([k, v]) => ((OUTER_KEYS.includes(k) ? outer : inner)[k] = v));
+  if ('flex' in outer || 'flexGrow' in outer || 'width' in outer || 'flexBasis' in outer) inner.flexGrow = 1;
+  return { outer: outer as ViewStyle, inner: inner as ViewStyle };
+}
+
 /**
  * Fade + rise entrance. Pass `index` to cascade list items. Skipped entirely
  * when the system "Reduce motion" setting is on.
@@ -475,18 +518,22 @@ export function FadeIn({
   children,
   delay = 0,
   index,
+  auto,
   distance = 14,
   style,
 }: {
   children: ReactNode;
   delay?: number;
   index?: number;
+  /** Cascade automatically with siblings mounting at the same time. */
+  auto?: boolean;
   distance?: number;
   style?: StyleProp<ViewStyle>;
 }) {
   const reduce = useReducedMotion();
   const v = useState(() => new Animated.Value(reduce ? 1 : 0))[0];
-  const wait = delay + (index != null ? motion.stagger(index) : 0);
+  const [autoWait] = useState(() => (auto ? autoDelay() : 0));
+  const wait = delay + autoWait + (index != null ? motion.stagger(index) : 0);
   useEffect(() => {
     if (reduce) {
       v.setValue(1);

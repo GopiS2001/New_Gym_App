@@ -26,6 +26,7 @@ export type LocalExercise = {
   exerciseId: number;
   name: string;
   imageUrl: string | null;
+  videoUrl?: string | null;
   loggingFields: string[];
   targetSets: number | null;
   targetReps: string | null;

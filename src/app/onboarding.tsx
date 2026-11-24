@@ -1,3 +1,5 @@
+import { FOCUS_ICONS, GOAL_ICONS } from '@/lib/option-icons';
+import { goBack } from '@/lib/nav';
 import type { IconName } from '@/components/ui';
 import type { OnboardingAnswers, OnboardingOptions } from '@/lib/types';
 
@@ -5,40 +7,25 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, Animated, Easing, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Animated, Easing, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { api, ApiError } from '@/lib/api';
+import { showDialog } from '@/stores/dialog';
 import { useAuth } from '@/stores/auth';
 import { useOnboardingOptions } from '@/lib/queries';
 import { useOnboarding } from '@/stores/onboarding';
 import { colors, fonts, radius } from '@/theme/tokens';
 import { ImageOption, OptionCard } from '@/components/options';
+import { TimePicker } from '@/components/time-picker';
 import { DAY_LABELS, deviceTimezone, requestReminderPermission, scheduleWeeklyReminders } from '@/lib/reminders';
 import { Button, Card, Chip, ErrorState, haptic, Icon, IconButton, Skeleton, Text, TextField } from '@/components/ui';
 
 // ----------------------------------------------------------------------
 
-const GOAL_ICONS: Record<string, IconName> = {
-  'build-muscle': 'barbell',
-  'gain-strength': 'trophy',
-  'lose-weight': 'flame',
-  'fundamental-conditioning': 'heart',
-  'sports-performance': 'speedometer',
-};
 const ACTIVITY_ICONS: Record<string, IconName> = {
   'log-my-workouts': 'create',
   'follow-workout-programs': 'calendar',
   'learn-new-exercises': 'school',
-};
-const FOCUS_ICONS: Record<string, IconName> = {
-  chest: 'shield',
-  back: 'git-merge',
-  arms: 'hand-left',
-  shoulders: 'triangle',
-  abs: 'grid',
-  legs: 'walk',
-  glutes: 'ellipse',
-  'full-body': 'body',
 };
 
 type StepKey =
@@ -60,7 +47,6 @@ const STEPS: StepKey[] = ['gender', 'goal', 'motivation', 'activity', 'focus', '
 
 const OPTIONAL: StepKey[] = ['gender', 'reasons', 'weight', 'activity'];
 
-const TIMES = ['06:00', '07:00', '08:00', '12:00', '17:00', '18:00', '19:00', '20:00'];
 
 // ----------------------------------------------------------------------
 
@@ -153,7 +139,7 @@ export default function Onboarding() {
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         {key !== 'complete' && (
           <View style={styles.top}>
-            <IconButton icon="chevron-back" label="Back" onPress={() => (index === 0 ? router.back() : go(index - 1))} />
+            <IconButton icon="chevron-back" label="Back" onPress={() => (index === 0 ? goBack() : go(index - 1))} />
             <View style={styles.progressTrack} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: steps.length, now: index + 1 }}>
               <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
             </View>
@@ -222,7 +208,7 @@ export default function Onboarding() {
 function alertError(e: unknown) {
   const msg = e instanceof Error ? e.message : 'Something went wrong';
   if (Platform.OS === 'web') globalThis.alert?.(msg);
-  else Alert.alert('Could not continue', msg);
+  else showDialog({ title: 'Could not continue', message: msg, icon: 'alert-circle-outline', tone: 'danger', confirmText: 'OK' });
 }
 
 // ----------------------------------------------------------------------
@@ -526,11 +512,7 @@ function RemindersStep({ answers, setAnswers }: { answers: OnboardingAnswers; se
           <Text variant="smallStrong" color={colors.textSecondary} style={{ marginTop: 6 }}>
             What time?
           </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {TIMES.map((t) => (
-              <Chip key={t} label={t} selected={r.time === t} onPress={() => setAnswers({ reminders: { ...r, time: t } })} />
-            ))}
-          </View>
+          <TimePicker value={r.time ?? '07:00'} onChange={(t) => setAnswers({ reminders: { ...r, time: t } })} />
         </View>
       )}
     </>
@@ -746,7 +728,7 @@ function SummaryRow({ icon, label, value }: { icon: IconName; label: string; val
 }
 
 const styles = StyleSheet.create({
-  top: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 8 },
+  top: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   progressTrack: { flex: 1, height: 6, borderRadius: 3, backgroundColor: colors.surface2, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 3, backgroundColor: colors.accent },
   dayTile: {

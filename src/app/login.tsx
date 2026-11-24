@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { KeyboardAvoidingView, Platform, Pressable, View } from 'react-native';
 
+import { isAdmin } from '@/lib/admin';
+import { useViewMode } from '@/stores/view-mode';
 import { ApiError } from '@/lib/api';
 import { onboardingDone, useAuth } from '@/stores/auth';
 import { colors } from '@/theme/tokens';
@@ -26,7 +28,8 @@ export default function Login() {
     setLoading(true);
     try {
       const me = await login(email.trim(), password);
-      router.replace(onboardingDone(me) ? '/(tabs)' : '/onboarding');
+      if (isAdmin(me)) useViewMode.getState().setMode('admin');
+      router.replace(isAdmin(me) ? '/admin' : onboardingDone(me) ? '/(tabs)' : '/onboarding');
     } catch (e) {
       const err = e as ApiError;
       setErrors({ form: err.message });

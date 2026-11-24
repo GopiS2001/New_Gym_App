@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
-import { Alert, Platform } from 'react-native';
 
+import type { IconName } from '@/components/ui';
+import { showDialog } from '@/stores/dialog';
 import { useSession, LocalExercise } from '@/stores/session';
-import type { ProgramWorkout } from './types';
+import type { ExerciseDetail, ProgramWorkout } from './types';
 
 type StartInput = { title: string; programWorkoutId?: number; templateId?: number; exercises: Omit<LocalExercise, 'key' | 'sets'>[] };
 
@@ -14,6 +15,7 @@ export function programWorkoutToSession(w: ProgramWorkout): StartInput {
       exerciseId: e.exercise.id,
       name: e.exercise.name,
       imageUrl: e.exercise.imageUrl,
+      videoUrl: e.exercise.videoUrl,
       loggingFields: e.exercise.exerciseType?.loggingFields ?? ['sets', 'reps', 'weight'],
       targetSets: e.sets,
       targetReps: e.reps,
@@ -23,14 +25,16 @@ export function programWorkoutToSession(w: ProgramWorkout): StartInput {
   };
 }
 
-export function confirm(title: string, message: string, confirmText: string, destructive = true): Promise<boolean> {
-  if (Platform.OS === 'web') return Promise.resolve(globalThis.confirm?.(`${title}\n\n${message}`) ?? true);
-  return new Promise((resolve) =>
-    Alert.alert(title, message, [
-      { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-      { text: confirmText, style: destructive ? 'destructive' : 'default', onPress: () => resolve(true) },
-    ])
-  );
+export function confirm(title: string, message: string, confirmText: string, destructive = true, icon?: IconName): Promise<boolean> {
+  // App-styled dialog (see components/dialog-host.tsx) instead of the plain system alert.
+  return showDialog({
+    title,
+    message,
+    confirmText,
+    cancelText: 'Cancel',
+    tone: destructive ? 'danger' : 'accent',
+    icon: icon ?? (destructive ? 'alert-circle-outline' : 'help-circle-outline'),
+  });
 }
 
 /** Starts a workout, asking before replacing one that is in progress. */
@@ -72,4 +76,21 @@ export function fmtMinutes(seconds?: number | null) {
 export function greeting() {
   const h = new Date().getHours();
   return h < 12 ? 'Good Morning' : h < 18 ? 'Good Afternoon' : 'Good Evening';
+}
+
+/** Converts an exercise into an entry of the active workout. */
+export function toSessionExercise(ex: ExerciseDetail) {
+  return {
+    exerciseId: ex.id,
+    name: ex.name,
+    imageUrl: ex.imageUrl,
+    videoUrl: ex.videoUrl,
+    loggingFields: ex.exerciseType.loggingFields,
+    targetSets: null,
+    targetReps: null,
+    targetDuration: null,
+    restSeconds: 90,
+    instructions: ex.instructions,
+    categoryLabel: ex.categories.map((c) => c.name).join(' & '),
+  };
 }

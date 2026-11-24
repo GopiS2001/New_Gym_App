@@ -61,6 +61,15 @@ export const tokens = {
   onExpired(cb: () => void) {
     onSessionExpired = cb;
   },
+  /** Current access token (for the live connection). */
+  current() {
+    return accessToken;
+  },
+  /** The server ended this session (e.g. admin force logout): sign out now. */
+  async expire() {
+    await tokens.clear();
+    onSessionExpired?.();
+  },
 };
 
 async function refreshAccessToken(): Promise<string | null> {
@@ -90,7 +99,8 @@ type Options = { method?: string; body?: unknown; auth?: boolean; signal?: Abort
 /** JSON request with bearer auth and one transparent token refresh on 401. */
 export async function request<T>(path: string, opts: Options = {}, retried = false): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
-  if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
+  const isForm = typeof FormData !== 'undefined' && opts.body instanceof FormData;
+  if (opts.body !== undefined && !isForm) headers['Content-Type'] = 'application/json';
   if (accessToken && opts.auth !== false) headers.Authorization = `Bearer ${accessToken}`;
 
   let res: Response;
@@ -98,7 +108,7 @@ export async function request<T>(path: string, opts: Options = {}, retried = fal
     res = await fetch(`${API_URL}${path}`, {
       method: opts.method ?? 'GET',
       headers,
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      body: opts.body === undefined ? undefined : isForm ? (opts.body as FormData) : JSON.stringify(opts.body),
       signal: opts.signal,
     });
   } catch {
@@ -136,6 +146,8 @@ export const api = {
   put: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PUT', body: body ?? {} }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body: body ?? {} }),
   delete: <T>(path: string, body?: unknown) => request<T>(path, { method: 'DELETE', body }),
+  /** multipart/form-data upload (e.g. admin media). */
+  upload: <T>(path: string, form: FormData) => request<T>(path, { method: 'POST', body: form }),
 };
 
 export function qs(params: Record<string, string | number | boolean | undefined | null | (string | number)[]>) {

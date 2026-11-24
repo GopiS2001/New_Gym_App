@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { Pressable, View } from 'react-native';
@@ -42,6 +42,19 @@ export default function VerifyEmail() {
     return () => clearTimeout(t);
   }, [cooldown]);
 
+  const done = async (already = false) => {
+    haptic.success();
+    await Promise.all([qc.invalidateQueries({ queryKey: ['profile'] }), qc.invalidateQueries({ queryKey: ['home'] }), refreshMe()]);
+    await showDialog({
+      title: already ? 'Already verified' : 'Email verified',
+      message: already ? 'Your email address was already confirmed.' : 'Thanks! Your email address is confirmed.',
+      icon: 'checkmark-circle',
+      tone: 'accent',
+      confirmText: 'Done',
+    });
+    goBack('/profile');
+  };
+
   const resend = async () => {
     setSending(true);
     setError(null);
@@ -59,28 +72,16 @@ export default function VerifyEmail() {
     }
   };
 
-  // Fresh code on open when asked (render-safe: runs once after mount).
-  const [requested, setRequested] = useState(false);
+  // Fresh code on open when asked (once).
+  const requested = useRef(false);
   useEffect(() => {
-    if (send === '1' && !requested) {
-      setRequested(true);
+    if (send === '1' && !requested.current) {
+      requested.current = true;
       resend();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [send, requested]);
+  }, [send]);
 
-  const done = async (already = false) => {
-    haptic.success();
-    await Promise.all([qc.invalidateQueries({ queryKey: ['profile'] }), qc.invalidateQueries({ queryKey: ['home'] }), refreshMe()]);
-    await showDialog({
-      title: already ? 'Already verified' : 'Email verified',
-      message: already ? 'Your email address was already confirmed.' : 'Thanks! Your email address is confirmed.',
-      icon: 'checkmark-circle',
-      tone: 'accent',
-      confirmText: 'Done',
-    });
-    goBack('/profile');
-  };
 
   const verify = async (value = code) => {
     if (value.length !== 6) return setError('Enter all 6 digits');

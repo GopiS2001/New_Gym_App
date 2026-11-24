@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { FlatList, Pressable, RefreshControl, View } from 'react-native';
+import { FlatList, RefreshControl, View } from 'react-native';
 
 import { api, Paginated } from '@/lib/api';
 import { useSession } from '@/stores/session';
 import { useOutbox } from '@/stores/outbox';
-import { colors, radius } from '@/theme/tokens';
+import { colors } from '@/theme/tokens';
 import { BarStrip } from '@/components/charts';
 import { Cover, difficultyLabel } from '@/components/content';
-import type { ExerciseDetail, ServerSession } from '@/lib/types';
+import type { ExerciseDetail } from '@/lib/types';
+import { SessionRow } from '@/components/session-row';
 import { useHome, useMyPrograms, useProgress, useSessions } from '@/lib/queries';
 import { fmtMinutes, programWorkoutToSession, toSessionExercise, useStartWorkout } from '@/lib/workout';
 import { Button, Card, EmptyState, FadeIn, Icon, Row, Screen, SectionHeader, Skeleton, Text } from '@/components/ui';
@@ -95,7 +96,7 @@ export default function WorkoutTab() {
       </Text>
 
       {active ? (
-        <Card highlight onPress={() => router.push('/session')} style={{ marginTop: 16 }} accessibilityLabel="Continue workout">
+        <Card highlight style={{ marginTop: 16 }}>
           <Row>
             <Icon name="pulse" size={26} color={colors.accent} />
             <View style={{ flex: 1 }}>
@@ -167,7 +168,7 @@ export default function WorkoutTab() {
                 {fmtMinutes(week.data?.totalDurationSeconds)}
               </Text>
             </Row>
-            <BarStrip data={(week.data?.days ?? []).slice(-7).map((d, i) => ({ label: dayLabels[i] ?? '', value: d.workouts }))} height={100} />
+            <BarStrip data={dayLabels.map((label, i) => ({ label, value: week.data?.days[i]?.workouts ?? 0 }))} height={100} />
           </>
         )}
       </Card>
@@ -252,34 +253,5 @@ export default function WorkoutTab() {
         <EmptyState icon="time-outline" title="No workouts yet" message="Complete your first workout to see your progress." />
       )}
     </Screen>
-  );
-}
-
-export function SessionRow({ s }: { s: ServerSession }) {
-  const router = useRouter();
-  const sets = s.exercises.reduce((n, e) => n + e.sets.length, 0);
-  const date = new Date(s.completedAt ?? s.startedAt);
-  return (
-    <Pressable onPress={() => router.push(`/history/${s.id}`)} accessibilityRole="button" accessibilityLabel={s.title ?? 'Workout'}>
-      <Card style={{ paddingVertical: 12 }}>
-        <Row>
-          <View style={{ width: 48, height: 48, borderRadius: radius.md, backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center' }}>
-            <Text variant="caption" color={colors.muted}>
-              {date.toLocaleDateString(undefined, { month: 'short' }).toUpperCase()}
-            </Text>
-            <Text variant="bodyStrong">{date.getDate()}</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text variant="bodyStrong" numberOfLines={1}>
-              {s.title ?? 'Workout'}
-            </Text>
-            <Text variant="caption" color={colors.muted}>
-              {s.exercises.length} exercises · {sets} sets · {fmtMinutes(s.durationSeconds)}
-            </Text>
-          </View>
-          <Icon name="chevron-forward" size={18} color={colors.muted} />
-        </Row>
-      </Card>
-    </Pressable>
   );
 }

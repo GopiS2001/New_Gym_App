@@ -128,3 +128,13 @@ export function deviceTimezone() {
     return 'UTC';
   }
 }
+
+/** "18:30" → "6:30 PM", "00:00" → "12:00 AM". */
+export function formatTime12(time?: string | null) {
+  if (!time) return '';
+  const [h, m] = time.split(':').map(Number);
+  if (Number.isNaN(h)) return time;
+  const period = h >= 12 ? 'PM' : 'AM';
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${String(m || 0).padStart(2, '0')} ${period}`;
+}

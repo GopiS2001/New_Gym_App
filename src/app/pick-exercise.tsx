@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlatList, TextInput, View } from 'react-native';
 
+import { goBack } from '@/lib/nav';
 import { api } from '@/lib/api';
 import { useDebouncedValue } from '@/lib/hooks';
 import { useExercises } from '@/lib/queries';
@@ -15,7 +15,6 @@ import { EmptyState, Header, Icon, IconButton, Skeleton } from '@/components/ui'
 
 /** Modal: add an exercise to the active workout. */
 export default function PickExercise() {
-  const router = useRouter();
   const addExercise = useSession((s) => s.addExercise);
   const [search, setSearch] = useState('');
   const debounced = useDebouncedValue(search, 300);
@@ -28,7 +27,7 @@ export default function PickExercise() {
     try {
       const ex = await api.get<ExerciseDetail>(`/exercises/${id}`);
       addExercise(toSessionExercise(ex));
-      router.back();
+      goBack('/workout');
     } finally {
       setAdding(null);
     }

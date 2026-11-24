@@ -2,39 +2,27 @@ import { useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useQueryClient } from '@tanstack/react-query';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Modal, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
 
+import { goBack } from '@/lib/nav';
 import { api, errorMessage } from '@/lib/api';
 import { useSession } from '@/stores/session';
 import { colors, radius } from '@/theme/tokens';
 import { AreaChart } from '@/components/charts';
-import { useStartWorkout } from '@/lib/workout';
+import { toSessionExercise, useStartWorkout } from '@/lib/workout';
 import type { ExerciseDetail, MemberCollection } from '@/lib/types';
 import { Cover, difficultyLabel, ProgramCardView, SaveButton } from '@/components/content';
+import { ExerciseVideo } from '@/components/video';
 import { useExercise, useExerciseHistory, useExercisePrograms, useLibrary, useToggleSave } from '@/lib/queries';
 import { Button, Card, Chip, EmptyState, ErrorState, FadeIn, Icon, IconButton, Row, Skeleton, Text, TextField } from '@/components/ui';
 
 type Tab = 'about' | 'history' | 'programs';
 
-export function toSessionExercise(ex: ExerciseDetail) {
-  return {
-    exerciseId: ex.id,
-    name: ex.name,
-    imageUrl: ex.imageUrl,
-    loggingFields: ex.exerciseType.loggingFields,
-    targetSets: null,
-    targetReps: null,
-    targetDuration: null,
-    restSeconds: 90,
-    instructions: ex.instructions,
-    categoryLabel: ex.categories.map((c) => c.name).join(' & '),
-  };
-}
-
 export default function ExerciseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>('about');
   const [collectionsOpen, setCollectionsOpen] = useState(false);
   const { data: ex, isLoading, error, refetch } = useExercise(id);
@@ -56,7 +44,7 @@ export default function ExerciseDetailScreen() {
   if (error) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg, padding: 20 }}>
-        <IconButton icon="chevron-back" label="Back" onPress={() => router.back()} />
+        <IconButton icon="chevron-back" label="Back" onPress={() => goBack('/explore')} />
         <View style={{ marginTop: 40 }}>
           <ErrorState message={(error as any)?.status === 404 ? 'This exercise is no longer available.' : errorMessage(error)} onRetry={() => refetch()} />
         </View>
@@ -67,12 +55,19 @@ export default function ExerciseDetailScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
-        {/* Hero */}
-        <Cover uri={ex?.imageUrl} style={{ height: 360 }} rounded={0}>
-          <LinearGradient colors={['rgba(11,21,32,0.5)', 'transparent', colors.bg]} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} />
+        {/* Hero: video (tap to play) when available, otherwise the cover image */}
+        <View style={{ height: 360 }}>
+          {ex?.videoUrl ? (
+            <ExerciseVideo uri={ex.videoUrl} posterUri={ex.imageUrl} style={StyleSheet.absoluteFill} muteTop={insets.top + 190} />
+          ) : (
+            <Cover uri={ex?.imageUrl} style={StyleSheet.absoluteFill} rounded={0}>
+              <LinearGradient colors={['rgba(11,21,32,0.5)', 'transparent', colors.bg]} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} />
+            </Cover>
+          )}
+          <LinearGradient colors={['rgba(11,21,32,0.55)', 'transparent']} style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 110 }} pointerEvents="none" />
           <SafeAreaView edges={['top']} style={{ position: 'absolute', left: 16, right: 16, top: 0 }}>
             <Row style={{ justifyContent: 'space-between', paddingTop: 8 }}>
-              <IconButton icon="chevron-back" label="Back" onPress={() => router.back()} />
+              <IconButton icon="chevron-back" label="Back" onPress={() => goBack('/explore')} />
               <Row gap={8}>
                 <IconButton
                   icon="share-outline"
@@ -83,9 +78,9 @@ export default function ExerciseDetailScreen() {
               </Row>
             </Row>
           </SafeAreaView>
-        </Cover>
+        </View>
 
-        <View style={{ paddingHorizontal: 20, marginTop: -40 }}>
+        <View style={{ paddingHorizontal: 20, marginTop: ex?.videoUrl ? 18 : -40 }}>
           {isLoading || !ex ? (
             <View style={{ gap: 12 }}>
               <Skeleton height={30} width="70%" />
@@ -325,7 +320,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function CollectionSheet({ visible, onClose, exerciseId }: { visible: boolean; onClose: () => void; exerciseId: number }) {
   const qc = useQueryClient();
-  const { data } = useLibrary();
+  const { data } = useLibrary(visible);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState<number | 'new' | null>(null);
 

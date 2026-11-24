@@ -10,6 +10,8 @@ export type Me = {
   avatarUrl: string | null;
   emailVerified: boolean;
   onboarding: { onboardingStatus: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'; onboardingStep: string | null } | null;
+  role?: { key: string; name: string } | null;
+  permissions?: string[];
 };
 
 export type AuthResponse = {
@@ -61,6 +63,7 @@ export type ExerciseCard = {
   slug: string;
   shortDescription: string | null;
   imageUrl: string | null;
+  videoUrl?: string | null;
   difficulty: Difficulty;
   exerciseType: ExerciseType;
   categories: Ref[];
@@ -72,7 +75,6 @@ export type ExerciseCard = {
 
 export type ExerciseDetail = ExerciseCard & {
   description: string | null;
-  videoUrl: string | null;
   instructions: string[];
   tips: string[];
   commonMistakes: string[];
@@ -113,7 +115,7 @@ export type ProgramExercise = {
   durationSeconds: number | null;
   restSeconds: number | null;
   notes: string | null;
-  exercise: { id: number; name: string; slug: string; imageUrl: string | null; difficulty: Difficulty; status: string; exerciseType: ExerciseType };
+  exercise: { id: number; name: string; slug: string; imageUrl: string | null; videoUrl?: string | null; difficulty: Difficulty; status: string; exerciseType: ExerciseType };
 };
 
 export type ProgramWorkout = {

@@ -29,6 +29,17 @@ export function useCan() {
   return (p: string) => isAdmin(user) && perms.includes(p);
 }
 
+/** "Seen 5 min ago" style text for presence. */
+export function lastSeen(at: string | null) {
+  if (!at) return 'Never seen';
+  const mins = Math.round((Date.now() - new Date(at).getTime()) / 60_000);
+  if (mins < 1) return 'Seen just now';
+  if (mins < 60) return `Seen ${mins} min ago`;
+  const h = Math.round(mins / 60);
+  if (h < 24) return `Seen ${h} h ago`;
+  return `Seen ${Math.round(h / 24)} d ago`;
+}
+
 // ----------------------------------------------------------------------------
 // Data
 

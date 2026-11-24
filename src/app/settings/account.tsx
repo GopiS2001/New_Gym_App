@@ -11,12 +11,12 @@ import { useProfile } from '@/lib/queries';
 import { confirm } from '@/lib/workout';
 import { cancelReminders } from '@/lib/reminders';
 import { confirmSignOut, signOutNow } from '@/lib/sign-out';
+import { useSession } from '@/stores/session';
 import { Button, Card, Divider, Header, haptic, Text, TextField } from '@/components/ui';
 
 export default function Account() {
   const router = useRouter();
   const qc = useQueryClient();
-  const logout = useAuth((s) => s.logout);
   const refreshMe = useAuth((s) => s.refreshMe);
   const { data: p } = useProfile();
   const [name, setName] = useState('');
@@ -83,7 +83,7 @@ export default function Account() {
               }
             />
             {p && !p.emailVerified && (
-              <Button title="Resend verification email" variant="ghost" size="sm" onPress={() => run('name', () => api.post('/auth/resend-verification'), 'Verification email sent')} />
+              <Button title="Verify email" variant="secondary" size="sm" icon="mail-unread-outline" onPress={() => router.push({ pathname: '/verify-email', params: { send: '1' } })} />
             )}
             {note('name')}
           </Card>

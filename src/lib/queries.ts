@@ -87,7 +87,7 @@ export const useCoach = (id?: string) => useQuery({ queryKey: ['coach', id], que
 export const useFeatured = () =>
   useQuery({ queryKey: ['featured'], queryFn: () => api.get<(MemberCollection & { imageUrl: string | null; slug: string; isFeatured: boolean })[]>('/collections?featured=true') });
 
-export const useLibrary = () => useQuery({ queryKey: ['library'], queryFn: () => api.get<Library>('/library') });
+export const useLibrary = (enabled = true) => useQuery({ queryKey: ['library'], queryFn: () => api.get<Library>('/library'), enabled });
 
 export const useSessions = () =>
   useInfiniteQuery({

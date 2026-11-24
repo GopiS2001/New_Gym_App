@@ -1,3 +1,4 @@
+import { showDialog } from './dialog';
 import { create } from 'zustand';
 
 import { api, tokens } from '@/lib/api';
@@ -20,7 +21,20 @@ export const useAuth = create<AuthState>((set, get) => ({
   user: null,
 
   bootstrap: async () => {
-    tokens.onExpired(() => set({ status: 'guest', user: null }));
+    tokens.onExpired(() => {
+      const wasSignedIn = get().status === 'authed';
+      set({ status: 'guest', user: null });
+      // e.g. an admin used "Force logout", or the session expired.
+      if (wasSignedIn) {
+        showDialog({
+          title: 'Session ended',
+          message: "You've been signed out. Please log in again to keep training.",
+          icon: 'time-outline',
+          tone: 'info',
+          confirmText: 'OK',
+        });
+      }
+    });
     const { accessToken, refreshToken } = await tokens.load();
     if (!accessToken && !refreshToken) {
       set({ status: 'guest' });

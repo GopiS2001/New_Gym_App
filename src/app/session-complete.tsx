@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
@@ -11,8 +11,8 @@ import { Button, Card, haptic, Icon, Row, StatTile, Text } from '@/components/ui
 export default function SessionComplete() {
   const router = useRouter();
   const p = useLocalSearchParams<{ title: string; duration: string; exercises: string; sets: string; volume: string; rating: string; synced: string; name: string }>();
-  const pop = useRef(new Animated.Value(0)).current;
-  const shine = useRef(new Animated.Value(0)).current;
+  const pop = useState(() => new Animated.Value(0))[0];
+  const shine = useState(() => new Animated.Value(0))[0];
 
   useEffect(() => {
     haptic.success();
@@ -30,7 +30,7 @@ export default function SessionComplete() {
           Great Work
         </Text>
 
-        <View style={{ alignItems: 'center', marginTop: 26 }}>
+        <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 16, height: 190 }}>
           <Animated.View
             style={[
               styles.glow,
@@ -106,7 +106,6 @@ export default function SessionComplete() {
 const styles = StyleSheet.create({
   glow: {
     position: 'absolute',
-    top: -20,
     width: 180,
     height: 180,
     borderRadius: 90,

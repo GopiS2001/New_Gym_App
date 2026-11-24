@@ -5,11 +5,14 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
+import { useUnreadCount } from '@/lib/social';
 import { api } from '@/lib/api';
 import { useAuth } from '@/stores/auth';
 import { useOutbox } from '@/stores/outbox';
 import { useSession } from '@/stores/session';
 import { colors, radius } from '@/theme/tokens';
+import { formatTime12 } from '@/lib/reminders';
+import { mediaUrl } from '@/lib/media';
 import { ProgressRing } from '@/components/charts';
 import { Cover, difficultyLabel, ExerciseTile, ProgramCardView } from '@/components/content';
 import { useHome, useProfile, useProgress, useInvalidate } from '@/lib/queries';
@@ -47,7 +50,7 @@ export default function HomeScreen() {
   };
 
   const tasks: { icon: IconName; title: string; sub: string; right?: string; done?: boolean; onPress?: () => void }[] = [];
-  if (today) tasks.push({ icon: 'barbell', title: today.title, sub: `${today.exercises.length} exercises`, right: profile?.reminders.time ?? undefined, onPress: () => router.push(`/program/${program?.programId}/workout/${today.id}`) });
+  if (today) tasks.push({ icon: 'barbell', title: today.title, sub: `${today.exercises.length} exercises`, right: profile?.reminders.time ? formatTime12(profile.reminders.time) : undefined, onPress: () => router.push(`/program/${program?.programId}/workout/${today.id}`) });
   if (w) {
     const left = Math.max(0, w.target - w.completed);
     tasks.push({ icon: 'flag', title: left ? `${left} more workout${left > 1 ? 's' : ''} this week` : 'Weekly goal reached', sub: `${w.completed} of ${w.target} done`, done: !left, onPress: () => router.push('/progress') });
@@ -77,7 +80,7 @@ export default function HomeScreen() {
         <Row gap={10}>
           <Pressable onPress={() => router.push('/(tabs)/profile')} accessibilityLabel="Your profile" style={styles.avatar}>
             {data?.greeting.avatarUrl ? (
-              <Image source={{ uri: data.greeting.avatarUrl }} style={{ width: '100%', height: '100%' }} />
+              <Image source={{ uri: mediaUrl(data.greeting.avatarUrl) ?? undefined }} style={{ width: '100%', height: '100%' }} />
             ) : (
               <Text variant="bodyStrong" color={colors.accentText}>
                 {firstName[0]?.toUpperCase() ?? '•'}
@@ -93,7 +96,7 @@ export default function HomeScreen() {
         </Row>
         <Row gap={8}>
           <IconButton icon="search" label="Search exercises" onPress={() => router.push('/exercises/all')} />
-          <IconButton icon="notifications-outline" label="Reminders" onPress={() => router.push('/settings/reminders')} />
+          <BellButton onPress={() => router.push('/notifications')} />
         </Row>
       </Row>
 
@@ -137,7 +140,7 @@ export default function HomeScreen() {
       ) : (
         <FadeIn>
           <Row gap={10}>
-            <StatTile style={{ flex: 1 }} icon="flame" tint={colors.danger} value={String(w?.weekStreak ?? 0)} label="WEEK STREAK" />
+            <StatTile style={{ flex: 1 }} icon="flame" tint={colors.danger} value={String(w?.weekStreak ?? 0)} label="STREAK" />
             <StatTile style={{ flex: 1 }} icon="layers" tint={colors.info} value={String(week?.totalSets ?? 0)} label="SETS" />
             <StatTile style={{ flex: 1 }} icon="time" tint={colors.accent} value={fmtMinutes(week?.totalDurationSeconds).replace(' min', 'm')} label="ACTIVE" />
             <StatTile style={{ flex: 1 }} icon="barbell" tint={colors.warning} value={`${w?.completed ?? 0}/${w?.target ?? 0}`} label="WORKOUTS" />
@@ -321,3 +324,24 @@ const styles = StyleSheet.create({
   },
   pulseDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accent },
 });
+
+/** Bell with the unread-notification count. */
+function BellButton({ onPress }: { onPress: () => void }) {
+  const { data } = useUnreadCount();
+  const n = data?.unread ?? 0;
+  return (
+    <View>
+      <IconButton icon={n ? 'notifications' : 'notifications-outline'} label={n ? `Notifications, ${n} unread` : 'Notifications'} onPress={onPress} />
+      {n > 0 && (
+        <View
+          pointerEvents="none"
+          style={{ position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: colors.danger, borderWidth: 2, borderColor: colors.bg, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Text variant="caption" color="#FFFFFF" style={{ fontSize: 10, lineHeight: 12 }}>
+            {n > 9 ? '9+' : n}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
