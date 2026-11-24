@@ -7,7 +7,7 @@ import { useViewMode } from '@/stores/view-mode';
 import { ApiError } from '@/lib/api';
 import { onboardingDone, useAuth } from '@/stores/auth';
 import { colors } from '@/theme/tokens';
-import { Brand } from '@/components/brand';
+import { Logo } from '@/components/brand';
 import { Button, Card, Header, Screen, Text, TextField } from '@/components/ui';
 
 export default function Login() {
@@ -43,7 +43,7 @@ export default function Login() {
       <Screen>
         <Header />
         <View style={{ alignItems: 'center', marginTop: 12, marginBottom: 28, gap: 8 }}>
-          <Brand size={28} />
+          <Logo width={200} />
           <Text variant="h1">Welcome back</Text>
           <Text variant="body" color={colors.textSecondary}>
             Log in to continue your training.
