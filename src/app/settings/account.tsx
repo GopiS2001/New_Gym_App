@@ -10,8 +10,7 @@ import { colors } from '@/theme/tokens';
 import { useProfile } from '@/lib/queries';
 import { confirm } from '@/lib/workout';
 import { cancelReminders } from '@/lib/reminders';
-import { useSession } from '@/stores/session';
-import { useOutbox } from '@/stores/outbox';
+import { confirmSignOut, signOutNow } from '@/lib/sign-out';
 import { Button, Card, Divider, Header, haptic, Text, TextField } from '@/components/ui';
 
 export default function Account() {
