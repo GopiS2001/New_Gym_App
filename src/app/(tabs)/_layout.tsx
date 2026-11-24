@@ -2,12 +2,14 @@ import type { IconName } from '@/components/ui';
 import type { BottomTabBarButtonProps } from 'expo-router/build/react-navigation/bottom-tabs/types';
 
 import { Tabs, Redirect } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Animated, Platform, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/stores/auth';
 import { colors } from '@/theme/tokens';
 import { haptic, Icon } from '@/components/ui';
+import { useReducedMotion } from '@/lib/motion';
 
 const BAR_HEIGHT = 68;
 const ICON_SIZE = 48;
@@ -26,20 +28,51 @@ const TABS: { name: string; title: string; icon: IconName; iconActive: IconName 
  */
 function TabButton({ tab, props }: { tab: (typeof TABS)[number]; props: BottomTabBarButtonProps }) {
   const focused = !!props['aria-selected'];
+  const reduce = useReducedMotion();
+  const [pop] = useState(() => new Animated.Value(focused ? 1 : 0));
+  const [press] = useState(() => new Animated.Value(1));
+
+  // Spring the circle when it becomes the active tab.
+  useEffect(() => {
+    if (reduce) {
+      pop.setValue(focused ? 1 : 0);
+      return;
+    }
+    Animated.spring(pop, { toValue: focused ? 1 : 0, friction: 5, tension: 140, useNativeDriver: Platform.OS !== 'web' }).start();
+  }, [focused, reduce, pop]);
+
+  const scale = Animated.multiply(press, pop.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }));
+  const lift = pop.interpolate({ inputRange: [0, 1], outputRange: [0, -2] });
+
   return (
     <Pressable
       onPress={(e) => {
         haptic.select();
         props.onPress?.(e as any);
       }}
-      onLongPress={props.onLongPress as any}
+      onLongPress={(e) => {
+        // Long-press the last tab ("You") for a quick "Log out?".
+        if (tab.name === 'profile') {
+          haptic.medium();
+          confirmSignOut();
+        } else props.onLongPress?.(e as any);
+      }}
+      delayLongPress={450}
+      onPressIn={() => !reduce && Animated.spring(press, { toValue: 0.86, speed: 50, bounciness: 0, useNativeDriver: Platform.OS !== 'web' }).start()}
+      onPressOut={() => !reduce && Animated.spring(press, { toValue: 1, speed: 30, bounciness: 8, useNativeDriver: Platform.OS !== 'web' }).start()}
       accessibilityRole="tab"
       accessibilityState={{ selected: focused }}
       accessibilityLabel={tab.title}
+      accessibilityHint={tab.name === 'profile' ? 'Long press to log out' : undefined}
+      accessibilityActions={tab.name === 'profile' ? [{ name: 'longpress', label: 'Log out' }] : undefined}
+      onAccessibilityAction={(e) => {
+        if (tab.name === 'profile' && e.nativeEvent.actionName === 'longpress') confirmSignOut();
+      }}
       style={{ flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center' }}
     >
-      <View
+      <Animated.View
         style={{
+          transform: [{ scale }, { translateY: lift }],
           width: ICON_SIZE,
           height: ICON_SIZE,
           borderRadius: ICON_SIZE / 2,
@@ -51,7 +84,7 @@ function TabButton({ tab, props }: { tab: (typeof TABS)[number]; props: BottomTa
         }}
       >
         <Icon name={focused ? tab.iconActive : tab.icon} size={21} color={focused ? colors.accentText : colors.textSecondary} />
-      </View>
+      </Animated.View>
     </Pressable>
   );
 }
@@ -69,6 +102,8 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
+        // Screens shift slightly and cross-fade when switching tabs.
+        animation: 'shift',
         tabBarHideOnKeyboard: true,
         sceneStyle: { backgroundColor: colors.bg },
         tabBarStyle: {
