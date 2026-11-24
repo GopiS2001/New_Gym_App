@@ -46,24 +46,8 @@ export default function Account() {
     }
   };
 
-  const signOut = async () => {
-    await logout();
-    qc.clear();
-    router.replace('/welcome');
-  };
-
-  /** Log out after confirming; mentions unsynced or in-progress workouts. */
-  const confirmSignOut = async () => {
-    const pending = useOutbox.getState().items.length;
-    const active = useSession.getState().active;
-    const notes = [
-      active ? `Your workout in progress ("${active.title}") stays on this phone.` : '',
-      pending ? `${pending} finished workout${pending > 1 ? 's' : ''} will sync when you log back in.` : '',
-    ].filter(Boolean);
-    const message = ['You will need to log in again to use FitFlow.', ...notes].join('\n\n');
-    const ok = await confirm('Log out?', message, 'Log out');
-    if (ok) await signOut();
-  };
+  // Shared with the long-press on the "You" tab (src/lib/sign-out.ts).
+  const signOut = signOutNow;
 
   const note = (section: string) =>
     msg?.section === section ? (
