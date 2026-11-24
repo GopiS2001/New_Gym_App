@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "FitFlow",
-    "slug": "fitflow",
+    "slug": "gym-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -49,6 +49,17 @@
     "backgroundColor": "#0B1520",
     "experiments": {
       "typedRoutes": false
+    },
+    "owner": "gopis2001",
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "23a30dbe-9a46-4315-975a-c4c12d2510c8"
+      }
     }
   }
 }
