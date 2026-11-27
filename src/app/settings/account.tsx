@@ -20,7 +20,7 @@ export default function Account() {
   const refreshMe = useAuth((s) => s.refreshMe);
   const { data: p } = useProfile();
   const [name, setName] = useState('');
-  const [pw, setPw] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [pw, setPw] = useState({ newPassword: '', confirmPassword: '' });
   const [deletePw, setDeletePw] = useState('');
   const [msg, setMsg] = useState<{ section: string; text: string; ok?: boolean } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -90,20 +90,19 @@ export default function Account() {
 
           <Card style={{ gap: 12 }}>
             <Text variant="h3">Change password</Text>
-            <TextField label="Current password" value={pw.currentPassword} onChangeText={(v) => setPw({ ...pw, currentPassword: v })} secure />
             <TextField label="New password" value={pw.newPassword} onChangeText={(v) => setPw({ ...pw, newPassword: v })} secure placeholder="8+ chars, upper, lower & number" />
             <TextField label="Confirm new password" value={pw.confirmPassword} onChangeText={(v) => setPw({ ...pw, confirmPassword: v })} secure />
             <Button
               title="Update password"
               size="md"
               loading={busy === 'pw'}
-              disabled={!pw.currentPassword || !pw.newPassword}
+              disabled={!pw.newPassword || !pw.confirmPassword}
               onPress={() =>
                 run(
                   'pw',
                   async () => {
                     await api.post('/auth/change-password', pw);
-                    setPw({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                    setPw({ newPassword: '', confirmPassword: '' });
                   },
                   'Password updated'
                 )
